@@ -85,8 +85,8 @@ describe('bootstrap', () => {
     const result = await bootstrap();
     expect(result.ok).toBe(true);
     if (result.ok) {
-      // 9 steps total in buildSteps
-      expect(result.value.stepsCompleted).toBe(9);
+      // 10 steps total in buildSteps (added chat_history_hydrate in v1.0.0)
+      expect(result.value.stepsCompleted).toBe(10);
       expect(result.value.nonCriticalFailures).toEqual([]);
       expect(result.value.totalLatencyMs).toBeGreaterThanOrEqual(0);
     }
@@ -97,6 +97,7 @@ describe('bootstrap', () => {
     expect(ids).toEqual([
       'db_init',
       'preferences_hydrate',
+      'chat_history_hydrate',
       'vault_hydrate',
       'settings_hydrate',
       'http_deps',
