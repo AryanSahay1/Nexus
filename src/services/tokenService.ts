@@ -9,6 +9,8 @@
  *     using the pattern `nexus_<provider>_<tokenType>`.
  *   - All public functions return `Result<T, NexusError>` and never throw.
  *   - Tokens are NEVER logged, even at error level.
+ *   - Bundle writes are atomic: either every field of an OAuth grant is
+ *     persisted, or the provider is left fully cleared.
  *
  * SecureStore already encrypts at rest using Keychain (iOS) / Keystore
  * (Android) — adding a second encryption layer would only obscure the
@@ -51,14 +53,6 @@ const MAX_TOKEN_LENGTH = 2048;
 /** Build the canonical SecureStore key for a given provider + token type. */
 export const buildKey = (provider: Provider, tokenType: TokenType): SecureStoreKey =>
   `${KEY_PREFIX}_${provider}_${tokenType}` as SecureStoreKey;
-
-/** Provider validation guard — accepts only known providers. */
-const isProvider = (value: string): value is Provider =>
-  (ALL_PROVIDERS as readonly string[]).includes(value);
-
-/** TokenType validation guard. */
-const isTokenType = (value: string): value is TokenType =>
-  (ALL_TOKEN_TYPES as readonly string[]).includes(value);
 
 /**
  * Validate a token string before writing to SecureStore.
@@ -176,8 +170,11 @@ export const deleteToken = async (
 };
 
 /**
- * Delete every token associated with a provider. Used by the disconnect flow.
- * Continues through individual failures; surfaces the first error encountered.
+ * Delete every token associated with a provider. Used by the disconnect flow
+ * and as the rollback mechanism for failed bundle writes.
+ *
+ * Continues through individual failures so that as many keys as possible are
+ * cleared; surfaces the first error encountered for the caller's bookkeeping.
  */
 export const deleteAllTokensForProvider = async (
   provider: Provider,
@@ -195,9 +192,16 @@ export const deleteAllTokensForProvider = async (
 };
 
 /**
- * Persist a complete OAuth grant by writing each individual string separately.
- * This is the canonical post-authorize() helper — it enforces LAW 5 by
- * preventing the caller from passing the raw response object.
+ * Persist a complete OAuth grant atomically:
+ *
+ *   1. validate every non-null field BEFORE touching SecureStore
+ *   2. perform writes serially
+ *   3. if any write fails, roll back by clearing every token for this
+ *      provider so the caller is never left with a half-rotated state
+ *      (e.g. a fresh accessToken paired with a stale tokenExpiry)
+ *
+ * This is the canonical post-`authorize()` helper. It enforces LAW 5 by
+ * preventing the caller from passing the raw OAuth response object.
  */
 export const setOAuthBundle = async (
   provider: Provider,
@@ -209,18 +213,31 @@ export const setOAuthBundle = async (
     clientId?: string | null;
   },
 ): Promise<Result<void, NexusError>> => {
-  const writes: readonly (readonly [TokenType, string | null | undefined])[] = [
+  const candidates: readonly (readonly [TokenType, string | null | undefined])[] = [
     ['accessToken', bundle.accessToken],
     ['refreshToken', bundle.refreshToken],
     ['tokenExpiry', bundle.accessTokenExpirationDate],
     ['userEmail', bundle.userEmail],
     ['clientId', bundle.clientId],
   ];
-  for (const [tokenType, value] of writes) {
+
+  const validated: (readonly [TokenType, string])[] = [];
+  for (const [tokenType, value] of candidates) {
     if (value === null || value === undefined || value.length === 0) continue;
-    const res = await setToken(provider, tokenType, value);
-    if (!res.ok) return res;
+    const v = validateTokenValue(value);
+    if (!v.ok) return v;
+    validated.push([tokenType, v.value]);
   }
+
+  for (const [tokenType, value] of validated) {
+    const res = await setToken(provider, tokenType, value);
+    if (!res.ok) {
+      logError('oauth_bundle_rollback', { provider, tool_name: tokenType });
+      await deleteAllTokensForProvider(provider);
+      return res;
+    }
+  }
+  logEvent('oauth_bundle_set', { provider });
   return ok(undefined);
 };
 
@@ -240,7 +257,6 @@ export const getServiceConnection = async (
       provider,
       status: 'disconnected',
       userEmail: null,
-      connectedAt: null,
       tokenExpiresAt: null,
     });
   }
@@ -257,25 +273,28 @@ export const getServiceConnection = async (
     provider,
     status: 'connected',
     userEmail: userEmailResult.ok ? userEmailResult.value : null,
-    connectedAt: null,
     tokenExpiresAt,
   });
 };
 
-/** Snapshot all known providers' connection status. */
+/**
+ * Snapshot all known providers' connection status.
+ * Built field-by-field with no `as` casts — the result type follows directly
+ * from the explicit destructuring below.
+ */
 export const getAllConnectedProviders = async (): Promise<Result<VaultSnapshot, NexusError>> => {
-  const entries = await Promise.all(
-    ALL_PROVIDERS.map(async (p) => [p, await getServiceConnection(p)] as const),
-  );
-  const partial: Partial<Record<Provider, ServiceConnection>> = {};
-  for (const [provider, result] of entries) {
-    if (!result.ok) return err(result.error);
-    partial[provider] = result.value;
-  }
+  const [google, whatsapp, openai] = await Promise.all([
+    getServiceConnection('google'),
+    getServiceConnection('whatsapp'),
+    getServiceConnection('openai'),
+  ]);
+  if (!google.ok) return err(google.error);
+  if (!whatsapp.ok) return err(whatsapp.error);
+  if (!openai.ok) return err(openai.error);
   return ok({
-    google: partial.google as ServiceConnection,
-    whatsapp: partial.whatsapp as ServiceConnection,
-    openai: partial.openai as ServiceConnection,
+    google: google.value,
+    whatsapp: whatsapp.value,
+    openai: openai.value,
   });
 };
 
@@ -301,6 +320,4 @@ export const __internal = {
   ALL_TOKEN_TYPES,
   MAX_TOKEN_LENGTH,
   validateTokenValue,
-  isProvider,
-  isTokenType,
 };

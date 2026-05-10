@@ -45,12 +45,19 @@ export interface OAuthToken {
   readonly scopes: readonly string[];
 }
 
-/** A user's connection to a single provider. */
+/**
+ * A user's connection to a single provider.
+ *
+ * Fields are derived directly from the SecureStore values that exist for
+ * the provider. We deliberately do NOT track a `connectedAt` timestamp
+ * because the canonical engineering directive does not specify a storage
+ * key for it, and a field whose value is always `null` is a footgun for
+ * any consumer that gates UI on a non-null check.
+ */
 export interface ServiceConnection {
   readonly provider: Provider;
   readonly status: 'connected' | 'disconnected';
   readonly userEmail: string | null;
-  readonly connectedAt: number | null;
   readonly tokenExpiresAt: number | null;
 }
 
@@ -101,14 +108,13 @@ export type Result<T, E = NexusError> =
   | { readonly ok: true; readonly value: T }
   | { readonly ok: false; readonly error: E };
 
-/** Construct an Ok result. */
+/**
+ * Construct an Ok result.
+ *
+ * Use `r.ok` directly to narrow a `Result` — the discriminated union
+ * already provides type narrowing without auxiliary type-guard helpers.
+ */
 export const ok = <T>(value: T): Result<T, never> => ({ ok: true, value });
 
 /** Construct an Err result. */
 export const err = <E>(error: E): Result<never, E> => ({ ok: false, error });
-
-/** Type guard for Ok results. */
-export const isOk = <T, E>(r: Result<T, E>): r is { readonly ok: true; readonly value: T } => r.ok;
-
-/** Type guard for Err results. */
-export const isErr = <T, E>(r: Result<T, E>): r is { readonly ok: false; readonly error: E } => !r.ok;

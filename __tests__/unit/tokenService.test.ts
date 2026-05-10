@@ -228,6 +228,40 @@ describe('deleteAllTokensForProvider', () => {
 });
 
 describe('setOAuthBundle (rotation entry point)', () => {
+  it('rejects an invalid field BEFORE making any SecureStore writes', async () => {
+    const result = await setOAuthBundle('google', {
+      accessToken: 'g_access',
+      refreshToken: '   ',
+      accessTokenExpirationDate: '2030-01-01T00:00:00.000Z',
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('INVALID_TOKEN_VALUE');
+    expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
+    expect(SecureStore.__store.size).toBe(0);
+  });
+
+  it('atomically rolls back when a write fails midway through the bundle', async () => {
+    let writeCount = 0;
+    (SecureStore.setItemAsync as jest.Mock).mockImplementation(
+      async (key: string, value: string) => {
+        writeCount += 1;
+        if (writeCount === 3) throw new Error('keychain busy');
+        SecureStore.__store.set(key, value);
+      },
+    );
+    const result = await setOAuthBundle('google', {
+      accessToken: 'g_access',
+      refreshToken: 'g_refresh',
+      accessTokenExpirationDate: '2030-01-01T00:00:00.000Z',
+      userEmail: 'user@example.com',
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('TOKEN_WRITE_FAILED');
+    for (const tt of __internal.ALL_TOKEN_TYPES) {
+      expect(SecureStore.__store.has(`nexus_google_${tt}`)).toBe(false);
+    }
+  });
+
   it('writes each field as a separate SecureStore key (LAW 5)', async () => {
     const result = await setOAuthBundle('google', {
       accessToken: 'g_access',
@@ -313,6 +347,16 @@ describe('connection snapshots', () => {
       expect(snapshot.value.openai.status).toBe('connected');
       expect(snapshot.value.google.status).toBe('disconnected');
       expect(snapshot.value.whatsapp.status).toBe('disconnected');
+    }
+  });
+
+  it('snapshot fields exactly match the public ServiceConnection shape', async () => {
+    const conn = await getServiceConnection('google');
+    expect(conn.ok).toBe(true);
+    if (conn.ok) {
+      expect(Object.keys(conn.value).sort()).toEqual(
+        ['provider', 'status', 'tokenExpiresAt', 'userEmail'].sort(),
+      );
     }
   });
 });
