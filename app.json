@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B0F14"
+      "backgroundColor": "#0A0A0F"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -25,15 +25,29 @@
     },
     "android": {
       "package": "com.nexus.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0B0F14"
+        "backgroundColor": "#0A0A0F"
       },
       "permissions": [
         "READ_CONTACTS",
         "RECORD_AUDIO",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["DEFAULT", "BROWSABLE"],
+          "data": [
+            {
+              "scheme": "com.nexus.app",
+              "host": "oauth2redirect",
+              "pathPrefix": "/google"
+            }
+          ]
+        }
       ]
     },
     "web": {
@@ -44,7 +58,6 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-sqlite",
       [
         "expo-contacts",
         {
