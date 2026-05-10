@@ -11,7 +11,7 @@
  * row at the top of the panel.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -27,6 +27,7 @@ import { useStore } from 'zustand';
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
+import { buildMemoryFirstOpenSteps, useTour } from '../../src/components/guide';
 import { type PreferenceCategory } from '../../src/db/preferencesRepo';
 import { getChatStore } from '../../src/store/chatStore';
 import { getPreferencesStore } from '../../src/store/preferencesStore';
@@ -43,6 +44,22 @@ const MemoryScreenInner: React.FC = () => {
   const [value, setValue] = useState('');
   const [category, setCategory] = useState<PreferenceCategory>('behavior');
   const [saving, setSaving] = useState(false);
+
+  // ── Guided tour ──
+  const tilesRef = useRef<View>(null);
+  const keyInputRef = useRef<View>(null);
+  const memoryChatTabRef = useRef<View>(null);
+  const memoryTour = useTour(
+    'memory_first_open',
+    buildMemoryFirstOpenSteps({
+      statTiles: tilesRef,
+      addFactKeyInput: keyInputRef,
+      chatTab: memoryChatTabRef,
+    }),
+  );
+  useEffect(() => {
+    void memoryTour.startTour();
+  }, [memoryTour]);
 
   const handleAdd = useCallback(async () => {
     if (key.trim().length === 0 || value.length === 0) return;
@@ -94,7 +111,7 @@ const MemoryScreenInner: React.FC = () => {
       <Text style={styles.heading}>MEMORY</Text>
       <Text style={styles.subheading}>What Nexus remembers about you</Text>
 
-      <View style={styles.tilesRow}>
+      <View ref={tilesRef} collapsable={false} style={styles.tilesRow}>
         <ClawPanel style={styles.tile}>
           <Text style={styles.tileNumber}>{entries.length}</Text>
           <Text style={styles.tileLabel}>Saved facts</Text>
@@ -114,15 +131,17 @@ const MemoryScreenInner: React.FC = () => {
         <Text style={styles.sectionHint}>
           These get injected into every system prompt automatically.
         </Text>
-        <TextInput
-          value={key}
-          onChangeText={setKey}
-          placeholder="key  e.g. email_tone"
-          placeholderTextColor={THEME.colors.text.muted}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.input}
-        />
+        <View ref={keyInputRef} collapsable={false}>
+          <TextInput
+            value={key}
+            onChangeText={setKey}
+            placeholder="key  e.g. email_tone"
+            placeholderTextColor={THEME.colors.text.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.input}
+          />
+        </View>
         <TextInput
           value={value}
           onChangeText={setValue}

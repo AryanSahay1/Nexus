@@ -7,6 +7,7 @@
  */
 
 import React from 'react';
+import { type RefObject } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { type Provider, type ServiceConnection } from '../../types/auth';
@@ -32,6 +33,8 @@ export interface ServiceCardProps {
    * OAuth flow.
    */
   readonly unavailableReason?: string;
+  /** Optional ref forwarded onto the underlying Connect button — used by the guided-tour engine to spotlight the exact button. */
+  readonly connectButtonRef?: RefObject<View | null>;
 }
 
 const labels: Record<Provider, { title: string; description: string }> = {
@@ -58,6 +61,7 @@ const ServiceCardImpl: React.FC<ServiceCardProps> = ({
   disabled = false,
   testID,
   unavailableReason,
+  connectButtonRef,
 }) => {
   const meta = labels[provider];
   const connected = connection.status === 'connected';
@@ -114,13 +118,19 @@ const ServiceCardImpl: React.FC<ServiceCardProps> = ({
               <StatusPill label={unavailableReason} tone="warning" />
             </View>
           ) : (
-            <GlowButton
-              label={`Connect ${meta.title}`}
-              variant="primary"
-              fullWidth
-              onPress={onConnect}
-              disabled={disabled}
-            />
+            <View
+              ref={connectButtonRef as RefObject<View> | undefined}
+              collapsable={false}
+            >
+              <GlowButton
+                label={`Connect ${meta.title}`}
+                variant="primary"
+                fullWidth
+                onPress={onConnect}
+                disabled={disabled}
+                testID={`${provider}-connect-button`}
+              />
+            </View>
           )}
         </View>
       )}

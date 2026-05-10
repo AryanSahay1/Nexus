@@ -15,7 +15,7 @@
 
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   RefreshControl,
@@ -31,6 +31,7 @@ import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
 import { LoadingSpinner } from '../../src/components/shared/LoadingSpinner';
+import { buildMailFirstOpenSteps, useTour } from '../../src/components/guide';
 import * as googleService from '../../src/services/googleService';
 import { getVaultStore } from '../../src/store/vaultStore';
 import { THEME } from '../../src/theme';
@@ -105,6 +106,28 @@ const MailScreenInner: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [openMessage, setOpenMessage] = useState<EmailDetail | null>(null);
   const [openLoading, setOpenLoading] = useState(false);
+
+  // ── Guided tour ──
+  const listRef = useRef<View>(null);
+  const firstRowRef = useRef<View>(null);
+  // The pull-to-refresh affordance lives at the top of the FlashList; we
+  // re-use the list's own ref as the spotlight target so the tooltip
+  // points at the right place.
+  const chatTabRef = useRef<View>(null);
+  const mailTour = useTour(
+    'mail_first_open',
+    buildMailFirstOpenSteps({
+      list: listRef,
+      firstRow: firstRowRef,
+      pullToRefresh: listRef,
+      chatTab: chatTabRef,
+    }),
+  );
+  useEffect(() => {
+    if (threads.length > 0 && !loading) {
+      void mailTour.startTour();
+    }
+  }, [threads.length, loading, mailTour]);
 
   const loadInbox = useCallback(async (initial: boolean) => {
     if (initial) setLoading(true);
@@ -235,21 +258,31 @@ const MailScreenInner: React.FC = () => {
           </Text>
         </View>
       ) : (
-        <FlashList
-          data={threads as GmailMessageSummary[]}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MailRow thread={item} onPress={handleOpen} />}
-          estimatedItemSize={92}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={THEME.colors.accent.cyan}
-              colors={[THEME.colors.accent.cyan]}
-            />
-          }
-        />
+        <View ref={listRef} collapsable={false} style={styles.flex}>
+          <FlashList
+            data={threads as GmailMessageSummary[]}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item, index }) =>
+              index === 0 ? (
+                <View ref={firstRowRef} collapsable={false}>
+                  <MailRow thread={item} onPress={handleOpen} />
+                </View>
+              ) : (
+                <MailRow thread={item} onPress={handleOpen} />
+              )
+            }
+            estimatedItemSize={92}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor={THEME.colors.accent.cyan}
+                colors={[THEME.colors.accent.cyan]}
+              />
+            }
+          />
+        </View>
       )}
     </View>
   );

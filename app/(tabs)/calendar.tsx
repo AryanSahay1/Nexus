@@ -16,7 +16,7 @@
 
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Pressable,
@@ -32,6 +32,7 @@ import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
 import { LoadingSpinner } from '../../src/components/shared/LoadingSpinner';
+import { buildCalendarFirstOpenSteps, useTour } from '../../src/components/guide';
 import * as googleService from '../../src/services/googleService';
 import * as notificationService from '../../src/services/notificationService';
 import { getVaultStore } from '../../src/store/vaultStore';
@@ -132,6 +133,24 @@ const CalendarScreenInner: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Guided tour ──
+  const rangeChipsRef = useRef<View>(null);
+  const firstEventRef = useRef<View>(null);
+  const calendarChatTabRef = useRef<View>(null);
+  const calendarTour = useTour(
+    'calendar_first_open',
+    buildCalendarFirstOpenSteps({
+      rangeChips: rangeChipsRef,
+      firstEvent: firstEventRef,
+      chatTab: calendarChatTabRef,
+    }),
+  );
+  useEffect(() => {
+    if (events.length > 0 && !loading) {
+      void calendarTour.startTour();
+    }
+  }, [events.length, loading, calendarTour]);
 
   const loadEvents = useCallback(
     async (initial: boolean): Promise<void> => {
@@ -237,7 +256,7 @@ const CalendarScreenInner: React.FC = () => {
         Long-press an event to schedule a reminder.
       </Text>
 
-      <View style={styles.rangeRow}>
+      <View ref={rangeChipsRef} collapsable={false} style={styles.rangeRow}>
         {RANGES.map((r) => {
           const active = r.id === range;
           return (
@@ -284,12 +303,18 @@ const CalendarScreenInner: React.FC = () => {
           keyExtractor={(item) => item.dayKey}
           estimatedItemSize={140}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <View style={styles.dayBlock}>
               <Text style={styles.dayLabel}>{item.dayKey}</Text>
-              {item.events.map((e) => (
-                <EventRow key={e.id} event={e} onLongPress={handleScheduleReminder} />
-              ))}
+              {item.events.map((e, eIdx) =>
+                index === 0 && eIdx === 0 ? (
+                  <View key={e.id} ref={firstEventRef} collapsable={false}>
+                    <EventRow event={e} onLongPress={handleScheduleReminder} />
+                  </View>
+                ) : (
+                  <EventRow key={e.id} event={e} onLongPress={handleScheduleReminder} />
+                ),
+              )}
             </View>
           )}
           refreshControl={

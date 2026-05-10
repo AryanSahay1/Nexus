@@ -33,6 +33,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '../src/components/shared/ErrorBoundary';
+import { TourProvider } from '../src/components/guide/TourProvider';
 import { bootstrap, type BootstrapResult } from '../src/services/bootstrap';
 import { type BootFailure } from '../src/utils/bootSequencer';
 import {
@@ -285,19 +286,21 @@ const RootLayout: React.FC = () => {
             style="light"
             backgroundColor={THEME.colors.background.primary}
           />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: THEME.colors.background.primary },
-              animation: 'fade',
-            }}
-          >
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="auth/connect"
-              options={{ presentation: 'modal' }}
-            />
-          </Stack>
+          <TourProvider>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: THEME.colors.background.primary },
+                animation: 'fade',
+              }}
+            >
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen
+                name="auth/connect"
+                options={{ presentation: 'modal' }}
+              />
+            </Stack>
+          </TourProvider>
         </ErrorBoundary>
       </GestureHandlerRootView>
     </SafeAreaProvider>

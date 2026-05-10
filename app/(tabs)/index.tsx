@@ -43,6 +43,12 @@ import { MessageBubble } from '../../src/components/chat/MessageBubble';
 import { StatusPill } from '../../src/components/shared/StatusPill';
 import { ToolExecutionBadge } from '../../src/components/chat/ToolExecutionBadge';
 import { TypingIndicator } from '../../src/components/chat/TypingIndicator';
+import {
+  buildChatConfirmActionSteps,
+  buildChatFirstMessageSteps,
+  buildVoiceFirstUseSteps,
+  useTour,
+} from '../../src/components/guide';
 import { useAgentLoop } from '../../src/hooks/useAgentLoop';
 import { useConfirmation } from '../../src/hooks/useConfirmation';
 import { useVoiceInput } from '../../src/hooks/useVoiceInput';
@@ -79,6 +85,59 @@ const ChatScreenInner: React.FC = () => {
   const [text, setText] = useState('');
   const [showBanner, setShowBanner] = useState(true);
 
+  // ── Guided tour wiring ──
+  const inputBarRef = useRef<View>(null);
+  const typingIndicatorRef = useRef<View>(null);
+  const firstAssistantBubbleRef = useRef<View>(null);
+  const confirmSummaryRef = useRef<View>(null);
+  const confirmButtonRef = useRef<View>(null);
+  const micRef = useRef<View>(null);
+
+  const firstMessageTour = useTour(
+    'chat_first_message',
+    buildChatFirstMessageSteps({
+      inputBar: inputBarRef,
+      typingIndicator: typingIndicatorRef,
+      firstAssistantBubble: firstAssistantBubbleRef,
+    }),
+  );
+  const confirmActionTour = useTour(
+    'chat_confirm_action',
+    buildChatConfirmActionSteps({
+      summary: confirmSummaryRef,
+      confirmButton: confirmButtonRef,
+    }),
+  );
+  const voiceTour = useTour(
+    'voice_first_use',
+    buildVoiceFirstUseSteps({
+      micIdle: micRef,
+      micRecording: micRef,
+      inputWithTranscript: inputBarRef,
+    }),
+  );
+
+  // Trigger the first-message tour whenever the user lands on Chat
+  // empty-handed. The tour itself is gated on `tour_completed_*` so
+  // re-entries are no-ops.
+  useEffect(() => {
+    if (messages.length === 0) {
+      void firstMessageTour.startTour();
+    }
+  }, [messages.length, firstMessageTour]);
+
+  // Trigger the destructive-action tour when the ConfirmationSheet
+  // first appears with a pending tool call.
+  useEffect(() => {
+    if (pendingAction !== null) {
+      void confirmActionTour.startTour();
+    }
+  }, [pendingAction, confirmActionTour]);
+
+  const handleMicTour = useCallback((): void => {
+    void voiceTour.startTour();
+  }, [voiceTour]);
+
   // Voice input: tap mic to record, tap again to stop. Transcript fills
   // the input bar so the user can review and edit before sending.
   const voice = useVoiceInput();
@@ -106,12 +165,13 @@ const ChatScreenInner: React.FC = () => {
   const micAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   const handleMicPress = useCallback(async (): Promise<void> => {
+    handleMicTour();
     if (voice.isRecording) {
       await voice.stopRecording();
       return;
     }
     await voice.startRecording();
-  }, [voice]);
+  }, [handleMicTour, voice]);
 
   const handleSend = useCallback(async (): Promise<void> => {
     const trimmed = text.trim();
@@ -213,10 +273,12 @@ const ChatScreenInner: React.FC = () => {
         <ToolExecutionBadge
           {...(currentToolName !== null ? { toolName: currentToolName } : { toolName: null })}
         />
-        <TypingIndicator
-          status={agentStatus}
-          {...(currentToolName !== null ? { currentToolName } : {})}
-        />
+        <View ref={typingIndicatorRef} collapsable={false}>
+          <TypingIndicator
+            status={agentStatus}
+            {...(currentToolName !== null ? { currentToolName } : {})}
+          />
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -232,26 +294,32 @@ const ChatScreenInner: React.FC = () => {
             />
           </View>
         ) : null}
-        <View style={[styles.inputBar, { paddingBottom: insets.bottom + THEME.spacing.md }]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={voice.isRecording ? 'Stop recording' : 'Start voice recording'}
-            onPress={() => void handleMicPress()}
-            disabled={voice.isTranscribing || isAgentBusy}
-            hitSlop={THEME.hitSlop}
-            testID="chat-mic-button"
-            style={({ pressed }) => [styles.micButton, { opacity: pressed ? 0.85 : 1 }]}
-          >
-            <Animated.View
-              style={[
-                styles.micCore,
-                voice.isRecording ? styles.micCoreRecording : styles.micCoreIdle,
-                micAnimatedStyle,
-              ]}
+        <View
+          ref={inputBarRef}
+          collapsable={false}
+          style={[styles.inputBar, { paddingBottom: insets.bottom + THEME.spacing.md }]}
+        >
+          <View ref={micRef} collapsable={false}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={voice.isRecording ? 'Stop recording' : 'Start voice recording'}
+              onPress={() => void handleMicPress()}
+              disabled={voice.isTranscribing || isAgentBusy}
+              hitSlop={THEME.hitSlop}
+              testID="chat-mic-button"
+              style={({ pressed }) => [styles.micButton, { opacity: pressed ? 0.85 : 1 }]}
             >
-              <Text style={styles.micGlyph}>{voice.isTranscribing ? '…' : '🎙'}</Text>
-            </Animated.View>
-          </Pressable>
+              <Animated.View
+                style={[
+                  styles.micCore,
+                  voice.isRecording ? styles.micCoreRecording : styles.micCoreIdle,
+                  micAnimatedStyle,
+                ]}
+              >
+                <Text style={styles.micGlyph}>{voice.isTranscribing ? '…' : '🎙'}</Text>
+              </Animated.View>
+            </Pressable>
+          </View>
           <TextInput
             value={text}
             onChangeText={setText}
@@ -283,6 +351,8 @@ const ChatScreenInner: React.FC = () => {
         onConfirm={confirmation.confirm}
         onCancel={confirmation.cancel}
         hapticsEnabled={hapticsEnabled}
+        summaryRef={confirmSummaryRef}
+        confirmButtonRef={confirmButtonRef}
       />
     </View>
   );

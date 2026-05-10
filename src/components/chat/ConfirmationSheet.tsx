@@ -6,7 +6,7 @@
  * dismisses without an explicit Confirm or Cancel.
  */
 
-import React from 'react';
+import React, { type RefObject } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { SlideInDown } from 'react-native-reanimated';
 
@@ -22,6 +22,9 @@ export interface ConfirmationSheetProps {
   readonly onCancel: () => void;
   readonly hapticsEnabled?: boolean;
   readonly testID?: string;
+  /** Optional refs forwarded to the inner summary block + Confirm button — used by the guided-tour engine. */
+  readonly summaryRef?: RefObject<View | null>;
+  readonly confirmButtonRef?: RefObject<View | null>;
 }
 
 const ConfirmationSheetImpl: React.FC<ConfirmationSheetProps> = ({
@@ -30,6 +33,8 @@ const ConfirmationSheetImpl: React.FC<ConfirmationSheetProps> = ({
   onCancel,
   hapticsEnabled = true,
   testID,
+  summaryRef,
+  confirmButtonRef,
 }) => {
   const visible = pendingAction !== null;
   return (
@@ -60,9 +65,11 @@ const ConfirmationSheetImpl: React.FC<ConfirmationSheetProps> = ({
             <Text style={styles.toolName}>
               {pendingAction?.toolName ?? 'unknown_tool'}
             </Text>
-            <Text style={styles.summary}>
-              {pendingAction?.displaySummary ?? 'Awaiting details…'}
-            </Text>
+            <View ref={summaryRef as RefObject<View> | undefined} collapsable={false}>
+              <Text style={styles.summary}>
+                {pendingAction?.displaySummary ?? 'Awaiting details…'}
+              </Text>
+            </View>
             <View style={styles.buttonRow}>
               <View style={styles.buttonFlex}>
                 <GlowButton
@@ -73,7 +80,11 @@ const ConfirmationSheetImpl: React.FC<ConfirmationSheetProps> = ({
                   onPress={onCancel}
                 />
               </View>
-              <View style={styles.buttonFlex}>
+              <View
+                ref={confirmButtonRef as RefObject<View> | undefined}
+                collapsable={false}
+                style={styles.buttonFlex}
+              >
                 <GlowButton
                   label="Confirm"
                   variant="primary"
