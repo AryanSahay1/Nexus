@@ -5,12 +5,13 @@
  * interface that records every SQL statement and parameter binding.
  */
 
-jest.mock('expo-sqlite', () => ({
+jest.mock('expo-sqlite/next', () => ({
   __esModule: true,
   openDatabaseAsync: async () => {
     throw new Error('preferencesRepo tests inject the database directly via __setDatabaseForTests');
   },
 }));
+jest.mock('expo-sqlite', () => ({ __esModule: true }));
 
 // eslint-disable-next-line import/first
 import { type NexusDatabase, __resetForTests, __setDatabaseForTests } from '../../src/db/database';
