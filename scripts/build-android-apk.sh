@@ -33,6 +33,28 @@ command -v java >/dev/null || { echo "JDK not on PATH"; exit 1; }
 [ -n "${ANDROID_HOME:-}" ] || [ -n "${ANDROID_SDK_ROOT:-}" ] || {
   echo "ANDROID_HOME / ANDROID_SDK_ROOT not set"; exit 1; }
 
+# AGP 8.x's JdkImageTransform requires JDK 17 specifically. JDK 21
+# fails on react-native-app-auth's compileDebugJavaWithJavac. JDK 11
+# is too old for AGP 8. Force 17 if present; fall back to whatever
+# `java -version` resolves to (with a warning if it looks wrong).
+JAVA_VERSION="$(java -version 2>&1 | head -1 | awk -F'"' '{print $2}' | cut -d. -f1)"
+if [ "$JAVA_VERSION" != "17" ]; then
+  for cand in /usr/lib/jvm/java-17-openjdk-amd64 /usr/lib/jvm/temurin-17-jdk-amd64 /opt/jdk-17 \
+              /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home; do
+    if [ -x "$cand/bin/java" ]; then
+      export JAVA_HOME="$cand"
+      export PATH="$JAVA_HOME/bin:$PATH"
+      echo "==> Using JDK 17 at $JAVA_HOME"
+      break
+    fi
+  done
+  CURRENT_VERSION="$(java -version 2>&1 | head -1 | awk -F'"' '{print $2}' | cut -d. -f1)"
+  if [ "$CURRENT_VERSION" != "17" ]; then
+    echo "WARN: building with JDK $CURRENT_VERSION. AGP 8.x is best-tested on JDK 17;"
+    echo "      JDK 21 fails on react-native-app-auth's compileDebugJavaWithJavac."
+  fi
+fi
+
 VERSION="$(node -e "console.log(require('./package.json').version)")"
 echo "==> Nexus v$VERSION ($VARIANT)"
 
