@@ -45,3 +45,42 @@ CREATE TABLE IF NOT EXISTS chat_history (
 
 CREATE INDEX IF NOT EXISTS idx_chat_history_created_at
   ON chat_history (created_at);
+
+-- ---------------------------------------------------------------------------
+-- cached_emails (schema v2)
+-- Offline-first cache of Gmail thread summaries. The Mail screen reads
+-- this table on mount before kicking off a network refresh, so the user
+-- always sees their most recent fetched view immediately on launch.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS cached_emails (
+  id            TEXT    PRIMARY KEY,
+  thread_id     TEXT    NOT NULL,
+  sender        TEXT    NOT NULL,
+  subject       TEXT    NOT NULL,
+  snippet       TEXT    NOT NULL,
+  date_iso      TEXT,
+  unread        INTEGER NOT NULL DEFAULT 0,
+  cached_at     INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_cached_emails_cached_at
+  ON cached_emails (cached_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cached_emails_date_iso
+  ON cached_emails (date_iso DESC);
+
+-- ---------------------------------------------------------------------------
+-- cached_events (schema v2)
+-- Offline-first cache of upcoming calendar events. Same contract as
+-- cached_emails: read on mount, refresh in background.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS cached_events (
+  id           TEXT    PRIMARY KEY,
+  summary      TEXT    NOT NULL,
+  start_iso    TEXT    NOT NULL,
+  end_iso      TEXT    NOT NULL,
+  html_link    TEXT,
+  cached_at    INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_cached_events_start_iso
+  ON cached_events (start_iso ASC);
