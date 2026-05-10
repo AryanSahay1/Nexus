@@ -44,23 +44,33 @@ jobs:
           npx eslint src __tests__ app --ext .ts,.tsx --max-warnings 0
           npx jest --colors=false
 
-      - name: Build APK
+      - name: Build debug APK (unminified, ~187MB, dev-friendly)
         env:
           EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID }}
         run: ./scripts/build-android-apk.sh debug
 
-      - name: Upload APK as workflow artifact
+      - name: Build release APK (ProGuard-minified, ~78MB, sideload-recommended)
+        env:
+          EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID }}
+        run: ./scripts/build-android-apk.sh release
+
+      - name: Upload APKs as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-android-debug
-          path: release/nexus-*-android-debug.apk
+          name: nexus-android-apks
+          path: |
+            release/nexus-*-android-debug.apk
+            release/nexus-*-android-release.apk
+            release/*.sha256
           if-no-files-found: error
 
-      - name: Attach APK to GitHub release (tag-only)
+      - name: Attach APKs to GitHub release (tag-only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
             release/nexus-*-android-debug.apk
             release/nexus-*-android-debug.apk.sha256
+            release/nexus-*-android-release.apk
+            release/nexus-*-android-release.apk.sha256
           generate_release_notes: true
