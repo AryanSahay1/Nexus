@@ -21,6 +21,15 @@ import javax.inject.Singleton
  * Storage key contract: `nexus_<provider>_<tokenType>` — only individual
  * token strings, never raw OAuth-response JSON blobs.
  */
+/**
+ * `EncryptedSharedPreferences` and `MasterKey` were marked `@Deprecated` in
+ * `androidx.security:security-crypto:1.1.0` because the upstream Tink library
+ * is the long-term replacement. The classes still work and remain on the
+ * recommendation track until 1.2.x ships a fully Tink-based replacement, so
+ * we suppress the deprecation noise here and revisit when a stable migration
+ * path is available.
+ */
+@Suppress("DEPRECATION")
 @Singleton
 class TokenStore @VisibleForTesting internal constructor(
     private val prefs: SharedPreferences
@@ -131,6 +140,7 @@ enum class Provider(val id: String) {
 
 enum class TokenType(val id: String) {
     ApiKey("apiKey"),
+    ClientId("clientId"),
     AccessToken("accessToken"),
     RefreshToken("refreshToken"),
     IdToken("idToken"),

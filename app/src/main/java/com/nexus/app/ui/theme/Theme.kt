@@ -8,6 +8,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -64,10 +65,3 @@ fun NexusTheme(
         content = content
     )
 }
-
-private fun Color.toArgb(): Int = android.graphics.Color.argb(
-    (alpha * 255).toInt(),
-    (red * 255).toInt(),
-    (green * 255).toInt(),
-    (blue * 255).toInt()
-)

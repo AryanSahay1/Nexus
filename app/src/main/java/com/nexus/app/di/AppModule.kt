@@ -8,7 +8,6 @@ import com.nexus.app.data.db.PreferencesDao
 import com.nexus.app.data.network.openAiRetrofit
 import com.nexus.app.data.network.googleRetrofit
 import com.nexus.app.data.network.AuthInterceptor
-import com.nexus.app.data.secure.TokenStore
 import com.nexus.app.data.service.GoogleApiService
 import com.nexus.app.data.service.OpenAiApiService
 import dagger.Module
@@ -55,10 +54,10 @@ object AppModule {
     @Singleton
     fun provideGoogleService(
         okHttpClient: OkHttpClient,
-        tokenStore: TokenStore
+        authInterceptor: AuthInterceptor
     ): GoogleApiService {
         val authedClient = okHttpClient.newBuilder()
-            .addInterceptor(AuthInterceptor(tokenStore))
+            .addInterceptor(authInterceptor)
             .build()
         return googleRetrofit(authedClient).create(GoogleApiService::class.java)
     }

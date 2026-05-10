@@ -63,7 +63,7 @@ class GoogleOAuthClient @Inject constructor(
         return service.getAuthorizationRequestIntent(request)
     }
 
-    suspend fun handleAuthResponse(data: Intent, clientId: String): NexusResult<OAuthBundle> {
+    suspend fun handleAuthResponse(data: Intent): NexusResult<OAuthBundle> {
         val response = AuthorizationResponse.fromIntent(data)
         val ex = AuthorizationException.fromIntent(data)
         if (response == null) {
@@ -71,20 +71,21 @@ class GoogleOAuthClient @Inject constructor(
                 NexusError(NexusErrorCode.OAUTH_ERROR, ex?.errorDescription ?: "Authorization cancelled.")
             )
         }
-        return exchangeCode(response, clientId)
+        return exchangeCode(response)
     }
 
-    private suspend fun exchangeCode(response: AuthorizationResponse, clientId: String): NexusResult<OAuthBundle> {
+    private suspend fun exchangeCode(response: AuthorizationResponse): NexusResult<OAuthBundle> {
         val service = AuthorizationService(context)
-        val tokenResp: TokenResponse? = suspendCancellableCoroutine { cont ->
-            service.performTokenRequest(response.createTokenExchangeRequest()) { resp, ex ->
-                if (ex != null) {
-                    cont.resume(null)
-                } else {
+        val tokenResp: TokenResponse? = try {
+            suspendCancellableCoroutine { cont ->
+                service.performTokenRequest(response.createTokenExchangeRequest()) { resp, _ ->
                     cont.resume(resp)
                 }
+                cont.invokeOnCancellation { service.dispose() }
             }
-            cont.invokeOnCancellation { service.dispose() }
+        } finally {
+            // B-8 fix: AuthorizationService leaks unless disposed.
+            service.dispose()
         }
         if (tokenResp == null || tokenResp.accessToken == null) {
             return NexusResult.err(

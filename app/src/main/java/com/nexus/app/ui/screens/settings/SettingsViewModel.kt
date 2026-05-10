@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexus.app.data.repo.ChatHistoryRepository
 import com.nexus.app.data.repo.PreferencesRepository
+import com.nexus.app.data.secure.AuthStateBus
 import com.nexus.app.data.secure.TokenStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -25,7 +26,8 @@ data class SettingsUiState(
 class SettingsViewModel @Inject constructor(
     private val tokenStore: TokenStore,
     private val historyRepo: ChatHistoryRepository,
-    private val preferencesRepo: PreferencesRepository
+    private val preferencesRepo: PreferencesRepository,
+    private val authStateBus: AuthStateBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -48,6 +50,10 @@ class SettingsViewModel @Inject constructor(
                 preferencesRepo.deleteAll()
             }
             _uiState.update { it.copy(isResetting = false, resetCompleted = true) }
+            // B-24 fix: tell the root navigator to re-evaluate the start
+            // destination. Without this, the user would be stuck on the
+            // Settings tab with no API key, and any send-to-chat would crash.
+            authStateBus.publish()
         }
     }
 }

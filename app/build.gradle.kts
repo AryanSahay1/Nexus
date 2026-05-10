@@ -50,6 +50,11 @@ android {
                     keyPassword = "android"
                 }
             }
+            // B-30 fix: v1 (JAR) signing is required for API 24–25 installs.
+            // v2 + v3 cover modern Android.
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
         }
     }
 
@@ -109,6 +114,18 @@ android {
         unitTests.isIncludeAndroidResources = true
         unitTests.isReturnDefaultValues = true
     }
+
+    lint {
+        // GradleDependency is an advisory "a newer version is available" — pinned
+        // versions are intentional, so demote it.
+        // MonochromeLauncherIcon is a cosmetic Android 13+ adaptive-icon polish
+        // we'll add when the brand has its monochrome glyph ready.
+        disable += setOf("GradleDependency", "MonochromeLauncherIcon", "ModifierParameter")
+        warningsAsErrors = false
+        abortOnError = true
+        checkReleaseBuilds = true
+        textReport = true
+    }
 }
 
 dependencies {
@@ -139,8 +156,7 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("androidx.security:security-crypto:1.1.0")
 
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-scalars:2.11.0")
@@ -150,8 +166,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
     implementation("net.openid:appauth:0.11.1")
-
-    implementation("io.coil-kt:coil-compose:2.6.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 

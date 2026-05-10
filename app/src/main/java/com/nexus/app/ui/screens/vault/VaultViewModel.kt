@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.nexus.app.core.NexusLog
 import com.nexus.app.core.NexusResult
 import com.nexus.app.data.oauth.GoogleOAuthClient
+import com.nexus.app.data.secure.AuthStateBus
 import com.nexus.app.data.secure.Provider
 import com.nexus.app.data.secure.TokenStore
 import com.nexus.app.data.secure.TokenType
@@ -32,7 +33,8 @@ data class VaultUiState(
 @HiltViewModel
 class VaultViewModel @Inject constructor(
     private val tokenStore: TokenStore,
-    private val oauth: GoogleOAuthClient
+    private val oauth: GoogleOAuthClient,
+    private val authStateBus: AuthStateBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VaultUiState())
@@ -47,7 +49,7 @@ class VaultViewModel @Inject constructor(
                     openAiKey = tokenStore.get(Provider.OpenAI, TokenType.ApiKey).getOrNull(),
                     googleAccess = tokenStore.get(Provider.Google, TokenType.AccessToken).getOrNull(),
                     googleEmail = tokenStore.get(Provider.Google, TokenType.UserEmail).getOrNull(),
-                    googleClientId = tokenStore.get(Provider.Google, TokenType.ApiKey).getOrNull()
+                    googleClientId = tokenStore.get(Provider.Google, TokenType.ClientId).getOrNull()
                 )
             }
             _uiState.update {
@@ -62,13 +64,13 @@ class VaultViewModel @Inject constructor(
         }
     }
 
+    /**
+     * B-18 fix: keep the draft in UI state only; do NOT persist on every
+     * keystroke. The encrypted prefs round-trip on each character was
+     * visibly lagging the input on slower devices.
+     */
     fun setGoogleClientId(value: String) {
         _uiState.update { it.copy(googleClientId = value, errorMessage = null) }
-        viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                tokenStore.set(Provider.Google, TokenType.ApiKey, value)
-            }
-        }
     }
 
     fun buildGoogleAuthIntent(): Intent? {
@@ -77,18 +79,23 @@ class VaultViewModel @Inject constructor(
             _uiState.update { it.copy(errorMessage = "Paste your Google OAuth Client ID first.") }
             return null
         }
+        // Persist once, at the moment we actually start the OAuth dance.
+        viewModelScope.launch(Dispatchers.IO) {
+            tokenStore.set(Provider.Google, TokenType.ClientId, clientId)
+        }
         return oauth.buildAuthIntent(clientId)
     }
 
     fun handleAuthResult(data: Intent?) {
         val intent = data ?: return
-        val clientId = _uiState.value.googleClientId.trim()
-        if (clientId.isBlank()) return
         _uiState.update { it.copy(isWorking = true) }
         viewModelScope.launch {
-            val result = oauth.handleAuthResponse(intent, clientId)
+            val result = oauth.handleAuthResponse(intent)
             when (result) {
-                is NexusResult.Ok -> NexusLog.i("oauth_connected", mapOf("provider" to "google"))
+                is NexusResult.Ok -> {
+                    NexusLog.i("oauth_connected", mapOf("provider" to "google"))
+                    authStateBus.publish()
+                }
                 is NexusResult.Err -> _uiState.update { it.copy(errorMessage = result.error.message) }
             }
             _uiState.update { it.copy(isWorking = false) }
@@ -100,6 +107,7 @@ class VaultViewModel @Inject constructor(
         _uiState.update { it.copy(isWorking = true) }
         viewModelScope.launch {
             withContext(Dispatchers.IO) { oauth.disconnect() }
+            authStateBus.publish()
             _uiState.update { it.copy(isWorking = false) }
             refresh()
         }
@@ -110,6 +118,7 @@ class VaultViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 tokenStore.set(Provider.OpenAI, TokenType.ApiKey, value)
             }
+            authStateBus.publish()
             refresh()
         }
     }
@@ -117,6 +126,7 @@ class VaultViewModel @Inject constructor(
     fun disconnectOpenAi() {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { tokenStore.delete(Provider.OpenAI, TokenType.ApiKey) }
+            authStateBus.publish()
             refresh()
         }
     }

@@ -2,7 +2,7 @@ package com.nexus.app.ui.screens.tabs
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Chat
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Settings
@@ -38,7 +38,7 @@ private data class TabItem(
 )
 
 private val tabs = listOf(
-    TabItem(NexusDestinations.Tabs.CHAT, R.string.tab_chat, Icons.Outlined.Chat),
+    TabItem(NexusDestinations.Tabs.CHAT, R.string.tab_chat, Icons.AutoMirrored.Outlined.Chat),
     TabItem(NexusDestinations.Tabs.VAULT, R.string.tab_vault, Icons.Outlined.Lock),
     TabItem(NexusDestinations.Tabs.MEMORY, R.string.tab_memory, Icons.Outlined.Memory),
     TabItem(NexusDestinations.Tabs.SETTINGS, R.string.tab_settings, Icons.Outlined.Settings)

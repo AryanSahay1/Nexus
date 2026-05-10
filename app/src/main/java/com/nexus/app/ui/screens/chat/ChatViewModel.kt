@@ -50,9 +50,12 @@ class ChatViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             val snapshot = withContext(Dispatchers.IO) { historyRepo.snapshot() }
-            _uiState.update { state ->
-                state.copy(messages = snapshot.toUiMessages())
-            }
+            val uiMessages = snapshot.toUiMessages()
+            // B-5 fix: keep `idCounter` ahead of any restored ids, otherwise the
+            // first newly appended message collides with a restored one and
+            // LazyColumn throws on duplicate keys.
+            idCounter = uiMessages.maxOfOrNull { it.id } ?: 0L
+            _uiState.update { it.copy(messages = uiMessages) }
         }
     }
 
@@ -81,9 +84,11 @@ class ChatViewModel @Inject constructor(
         _uiState.update { it.copy(input = "", status = AgentStatus.PROCESSING_INTENT) }
 
         loopJob = viewModelScope.launch {
-            withContext(Dispatchers.IO) { historyRepo.append(userMessage) }
+            // B-3 fix: snapshot history *before* appending the current user
+            // message; otherwise it ends up in the history list and the agent
+            // loop adds a second copy via its own `userMessage` argument →
+            // OpenAI receives the same user turn twice.
             val history = withContext(Dispatchers.IO) { historyRepo.snapshot() }
-                .filter { it.role != "user" || it != userMessage }
 
             val events = Channel<AgentLoop.AgentEvent>(Channel.BUFFERED)
             val eventConsumer = launch { consumeEvents(events) }
@@ -92,7 +97,7 @@ class ChatViewModel @Inject constructor(
                 history = history,
                 userMessage = text,
                 events = events,
-                confirmationGate = { pending ->
+                confirmationGate = {
                     val deferred = CompletableDeferred<AgentLoop.Confirmation>()
                     pendingDeferred = deferred
                     deferred.await()
@@ -104,14 +109,18 @@ class ChatViewModel @Inject constructor(
 
             when (result) {
                 is NexusResult.Ok -> {
+                    // result.value = [system, ...history, user, ...new]
                     val newMessages = result.value.drop(history.size + 2)
-                    val combined = listOf(userMessage) + newMessages
                     withContext(Dispatchers.IO) {
-                        historyRepo.appendAll(combined.drop(1))
+                        historyRepo.append(userMessage)
+                        historyRepo.appendAll(newMessages)
                     }
                 }
                 is NexusResult.Err -> {
                     NexusLog.w("agent_loop_error", mapOf("error_code" to result.error.code.name))
+                    // B-20 fix: persist the user message even on error so it
+                    // survives a relaunch instead of silently disappearing.
+                    withContext(Dispatchers.IO) { historyRepo.append(userMessage) }
                     _uiState.update { it.copy(errorMessage = result.error.message) }
                 }
             }

@@ -17,7 +17,7 @@ import java.util.TimeZone
 import javax.inject.Inject
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.jsonPrimitive
 
 private val ISO_NOW: () -> String = {
@@ -48,8 +48,16 @@ class CalendarNextEventTool @Inject constructor(
                 isRetryable = resp.code() in 500..599
             )
             val event = resp.body()?.items?.firstOrNull()
-                ?: return@runCatchingNexus """{"event":null,"message":"No upcoming events"}"""
-            """{"summary":"${event.summary ?: ""}","start":"${event.start?.dateTime ?: event.start?.date ?: ""}","end":"${event.end?.dateTime ?: event.end?.date ?: ""}","htmlLink":"${event.htmlLink ?: ""}"}"""
+                ?: return@runCatchingNexus toolJson {
+                    put("event", null as String?)
+                    put("message", "No upcoming events")
+                }
+            toolJson {
+                put("summary", event.summary ?: "")
+                put("start", event.start?.dateTime ?: event.start?.date ?: "")
+                put("end", event.end?.dateTime ?: event.end?.date ?: "")
+                put("htmlLink", event.htmlLink ?: "")
+            }
         }
     }
 }
@@ -112,7 +120,11 @@ class CalendarCreateEventTool @Inject constructor(
                 isRetryable = resp.code() in 500..599
             )
             val created = resp.body()
-            """{"ok":true,"id":"${created?.id ?: ""}","htmlLink":"${created?.htmlLink ?: ""}"}"""
+            toolJson {
+                put("ok", true)
+                put("id", created?.id ?: "")
+                put("htmlLink", created?.htmlLink ?: "")
+            }
         }
     }
 }

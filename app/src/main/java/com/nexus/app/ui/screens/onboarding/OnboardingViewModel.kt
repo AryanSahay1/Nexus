@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nexus.app.core.NexusLog
 import com.nexus.app.core.NexusResult
+import com.nexus.app.data.secure.AuthStateBus
 import com.nexus.app.data.secure.Provider
 import com.nexus.app.data.secure.TokenStore
 import com.nexus.app.data.secure.TokenType
@@ -31,7 +32,8 @@ sealed class OnboardingUiEvent {
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
-    private val tokenStore: TokenStore
+    private val tokenStore: TokenStore,
+    private val authStateBus: AuthStateBus
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(OnboardingUiState())
@@ -60,6 +62,7 @@ class OnboardingViewModel @Inject constructor(
                 is NexusResult.Ok -> {
                     NexusLog.i("openai_api_key_saved", mapOf("provider" to "openai"))
                     _uiState.update { it.copy(isSaving = false) }
+                    authStateBus.publish()
                     _events.trySend(OnboardingUiEvent.Saved)
                 }
                 is NexusResult.Err -> _uiState.update {

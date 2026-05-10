@@ -11,6 +11,8 @@ import com.nexus.app.domain.agent.Tool
 import com.nexus.app.domain.agent.ToolSummary
 import javax.inject.Inject
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.jsonPrimitive
 
 class GmailReadRecentTool @Inject constructor(
@@ -44,9 +46,14 @@ class GmailReadRecentTool @Inject constructor(
             val results = refs.take(limit).mapNotNull { ref ->
                 val msg = google.getGmailMessage(ref.id).body() ?: return@mapNotNull null
                 val headers = msg.payload?.headers.orEmpty().associateBy { it.name }
-                """{"id":"${msg.id}","from":"${headers["From"]?.value ?: ""}","subject":"${headers["Subject"]?.value ?: ""}","snippet":"${(msg.snippet ?: "").replace("\"", "'")}"}"""
+                buildJsonObject {
+                    put("id", msg.id)
+                    put("from", headers["From"]?.value ?: "")
+                    put("subject", headers["Subject"]?.value ?: "")
+                    put("snippet", msg.snippet ?: "")
+                }
             }
-            "[${results.joinToString(",")}]"
+            toolJsonArray(results)
         }
     }
 }
@@ -98,8 +105,10 @@ class GmailSendTool @Inject constructor(
                 message = "Gmail send returned HTTP ${resp.code()}",
                 isRetryable = resp.code() in 500..599
             )
-            val id = resp.body()?.id ?: ""
-            """{"ok":true,"id":"$id"}"""
+            toolJson {
+                put("ok", true)
+                put("id", resp.body()?.id ?: "")
+            }
         }
     }
 }

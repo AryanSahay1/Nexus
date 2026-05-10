@@ -10,6 +10,7 @@ import com.nexus.app.domain.agent.ToolSummary
 import javax.inject.Inject
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.json.jsonPrimitive
 
 class RememberTool @Inject constructor(
@@ -44,7 +45,10 @@ class RememberTool @Inject constructor(
             )
         }
         return repo.upsert(key, value, category).map {
-            """{"ok":true,"key":"$key"}"""
+            toolJson {
+                put("ok", true)
+                put("key", key)
+            }
         }
     }
 }
@@ -89,6 +93,11 @@ class ForgetTool @Inject constructor(
             ?: return NexusResult.err(
                 NexusError(NexusErrorCode.INVALID_PARAMETER, "key is required")
             )
-        return repo.delete(key).map { """{"ok":true,"key":"$key"}""" }
+        return repo.delete(key).map {
+            toolJson {
+                put("ok", true)
+                put("key", key)
+            }
+        }
     }
 }
