@@ -3,6 +3,7 @@
  */
 
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
@@ -38,6 +39,7 @@ const MODEL_PRESETS: readonly string[] = [
 
 const SettingsScreenInner: React.FC = () => {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const baseUrl = useStore(getSettingsStore(), (s) => s.baseUrl);
   const model = useStore(getSettingsStore(), (s) => s.model);
   const temperature = useStore(getSettingsStore(), (s) => s.temperature);
@@ -113,6 +115,35 @@ const SettingsScreenInner: React.FC = () => {
     >
       <Text style={styles.heading}>SETTINGS</Text>
       <Text style={styles.subheading}>Configure your AI provider and behavior.</Text>
+
+      <ClawPanel style={styles.section}>
+        <Text style={styles.sectionTitle}>Connected services & memories</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open vault"
+          onPress={() => router.push('/(tabs)/vault')}
+          style={styles.linkRow}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.linkLabel}>Vault</Text>
+            <Text style={styles.linkHint}>API keys and Google connection</Text>
+          </View>
+          <Text style={styles.linkArrow}>›</Text>
+        </Pressable>
+        <View style={styles.linkDivider} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open memory"
+          onPress={() => router.push('/(tabs)/memory')}
+          style={styles.linkRow}
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.linkLabel}>Memory</Text>
+            <Text style={styles.linkHint}>Saved facts and preferences</Text>
+          </View>
+          <Text style={styles.linkArrow}>›</Text>
+        </Pressable>
+      </ClawPanel>
 
       <ClawPanel style={styles.section}>
         <Text style={styles.sectionTitle}>AI provider</Text>
@@ -268,6 +299,33 @@ const styles = StyleSheet.create({
     fontSize: THEME.fontSizes.md,
     color: THEME.colors.text.primary,
     marginBottom: THEME.spacing.md,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: THEME.spacing.sm,
+  },
+  linkDivider: {
+    height: 1,
+    backgroundColor: THEME.colors.border.default,
+    marginVertical: 2,
+  },
+  linkLabel: {
+    fontFamily: THEME.fonts.bodyMedium,
+    fontSize: THEME.fontSizes.md,
+    color: THEME.colors.text.primary,
+  },
+  linkHint: {
+    fontFamily: THEME.fonts.body,
+    fontSize: THEME.fontSizes.xs,
+    color: THEME.colors.text.muted,
+    marginTop: 2,
+  },
+  linkArrow: {
+    fontFamily: THEME.fonts.display,
+    fontSize: THEME.fontSizes.xl,
+    color: THEME.colors.accent.cyan,
+    paddingHorizontal: THEME.spacing.sm,
   },
   providerRow: { flexDirection: 'row', gap: THEME.spacing.sm, marginBottom: THEME.spacing.md },
   providerChip: {

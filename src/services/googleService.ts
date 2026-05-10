@@ -284,6 +284,53 @@ export const getNextCalendarEvent = async (
   });
 };
 
+/**
+ * List upcoming calendar events from the primary calendar within a time
+ * range. Used by the Calendar screen's day + week views.
+ */
+export const listCalendarEvents = async (params: {
+  readonly timeMinIso: string;
+  readonly timeMaxIso: string;
+  readonly limit?: number;
+}): Promise<Result<CalendarEvent[], NexusError>> => {
+  if (Number.isNaN(Date.parse(params.timeMinIso))) {
+    return err(new NexusError('INVALID_INPUT', 'timeMinIso must be ISO 8601.'));
+  }
+  if (Number.isNaN(Date.parse(params.timeMaxIso))) {
+    return err(new NexusError('INVALID_INPUT', 'timeMaxIso must be ISO 8601.'));
+  }
+  if (Date.parse(params.timeMaxIso) <= Date.parse(params.timeMinIso)) {
+    return err(new NexusError('INVALID_INPUT', 'timeMax must be after timeMin.'));
+  }
+  const limit = Math.max(1, Math.min(50, Math.floor(params.limit ?? 25)));
+  const response = await requestAsResult<CalendarListResponse>(httpClient, {
+    url: `${CALENDAR_BASE}/calendars/primary/events`,
+    method: 'GET',
+    params: {
+      orderBy: 'startTime',
+      singleEvents: 'true',
+      timeMin: params.timeMinIso,
+      timeMax: params.timeMaxIso,
+      maxResults: String(limit),
+    },
+    nexusProvider: 'google',
+  });
+  if (!response.ok) return err(response.error);
+  const items = response.value.items ?? [];
+  const events: CalendarEvent[] = items.map((item) => {
+    const start = item.start?.dateTime ?? item.start?.date ?? '';
+    const end = item.end?.dateTime ?? item.end?.date ?? '';
+    return {
+      id: item.id,
+      summary: item.summary ?? '',
+      startIso: start,
+      endIso: end,
+      htmlLink: item.htmlLink ?? null,
+    };
+  });
+  return ok(events);
+};
+
 // ── Gmail get-by-id (full body) -------------------------------------------
 
 interface GmailFullMessage {

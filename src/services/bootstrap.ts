@@ -57,6 +57,7 @@ import {
   type NativeContact,
 } from '../tools/contacts';
 import { installPreferencesStore } from '../tools/memory';
+import { getChatStore } from '../store/chatStore';
 import { getPreferencesStore } from '../store/preferencesStore';
 import { getSettingsStore } from '../store/settingsStore';
 import { getVaultStore } from '../store/vaultStore';
@@ -218,6 +219,11 @@ const buildSteps = (): readonly BootStep[] => [
     id: 'preferences_hydrate',
     kind: 'critical',
     run: async () => getPreferencesStore().getState().hydrateFromDb(),
+  },
+  {
+    id: 'chat_history_hydrate',
+    kind: 'non_critical',
+    run: async () => getChatStore().getState().hydrateFromDb(),
   },
   {
     id: 'vault_hydrate',

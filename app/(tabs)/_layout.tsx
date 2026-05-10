@@ -27,8 +27,8 @@ interface TabDescriptor {
 
 const TABS: readonly TabDescriptor[] = [
   { name: 'index', label: 'Chat', glyph: '⚡' },
-  { name: 'vault', label: 'Vault', glyph: '🔒' },
-  { name: 'memory', label: 'Memory', glyph: '🧠' },
+  { name: 'mail', label: 'Mail', glyph: '✉' },
+  { name: 'calendar', label: 'Calendar', glyph: '📅' },
   { name: 'settings', label: 'Settings', glyph: '⚙' },
 ];
 
@@ -117,9 +117,14 @@ const TabsLayout: React.FC = () => (
     )}
   >
     <Tabs.Screen name="index" options={{ title: 'Chat' }} />
-    <Tabs.Screen name="vault" options={{ title: 'Vault' }} />
-    <Tabs.Screen name="memory" options={{ title: 'Memory' }} />
+    <Tabs.Screen name="mail" options={{ title: 'Mail' }} />
+    <Tabs.Screen name="calendar" options={{ title: 'Calendar' }} />
     <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+    {/* Vault and Memory remain navigable by deep link / via Settings sub-sections,
+        but no longer occupy a primary tab slot. expo-router auto-hides routes
+        not declared in <Tabs.Screen>. */}
+    <Tabs.Screen name="vault" options={{ href: null, title: 'Vault' }} />
+    <Tabs.Screen name="memory" options={{ href: null, title: 'Memory' }} />
   </Tabs>
 );
 
