@@ -1,0 +1,12 @@
+node_modules/
+android/
+ios/
+build/
+**/build/
+app/build/
+.expo/
+dist/
+coverage/
+scripts/generate-assets.js
+plugins/with-app-auth-android.js
+e2e/

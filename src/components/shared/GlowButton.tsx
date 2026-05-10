@@ -99,10 +99,13 @@ const GlowButtonImpl: React.FC<GlowButtonProps> = ({
         accessibilityLabel={accessibilityLabel ?? label}
         disabled={isInactive}
         onPressIn={() => {
-          scale.value = withSpring(0.97, THEME.animation.spring);
+          // SPRINGS.snappy gives the button a tactile rebound — the
+          // skill file's §12 calls this out as the single most
+          // important micro-interaction in any product surface.
+          scale.value = withSpring(0.96, THEME.motion.springs.snappy);
         }}
         onPressOut={() => {
-          scale.value = withSpring(1, THEME.animation.spring);
+          scale.value = withSpring(1, THEME.motion.springs.snappy);
         }}
         onPress={() => {
           triggerHaptic();

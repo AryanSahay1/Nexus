@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { SlideInDown } from 'react-native-reanimated';
+import Animated, { SlideInDown, FadeIn } from 'react-native-reanimated';
 
 import { THEME } from '../../theme';
 import { type PendingAction } from '../../types/agent';
@@ -40,15 +40,22 @@ const ConfirmationSheetImpl: React.FC<ConfirmationSheetProps> = ({
       onRequestClose={onCancel}
       testID={testID}
     >
-      <Pressable
-        style={styles.backdrop}
-        accessibilityRole="button"
-        accessibilityLabel="Cancel pending action"
-        onPress={onCancel}
+      <Animated.View
+        entering={FadeIn.duration(THEME.motion.durations.normal)}
+        style={StyleSheet.absoluteFill}
       >
-        <Animated.View
-          entering={SlideInDown.duration(THEME.animation.fastIn)}
-          style={styles.sheetWrap}
+        <Pressable
+          style={styles.backdrop}
+          accessibilityRole="button"
+          accessibilityLabel="Cancel pending action"
+          onPress={onCancel}
+        >
+          <Animated.View
+            // Spring-style slide-in — feels heavier than a linear
+            // fade, signalling "stop and read this" before the user
+            // commits to a destructive action. (skill file §13)
+            entering={SlideInDown.springify().damping(22).stiffness(220)}
+            style={styles.sheetWrap}
           // Stop propagation so taps on the sheet itself don't dismiss.
           onStartShouldSetResponder={() => true}
         >
@@ -84,8 +91,9 @@ const ConfirmationSheetImpl: React.FC<ConfirmationSheetProps> = ({
               </View>
             </View>
           </ClawPanel>
-        </Animated.View>
-      </Pressable>
+          </Animated.View>
+        </Pressable>
+      </Animated.View>
     </Modal>
   );
 };
