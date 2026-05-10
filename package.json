@@ -1,6 +1,6 @@
 {
   "name": "nexus",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
@@ -32,7 +32,6 @@
     "expo-haptics": "~12.8.1",
     "expo-clipboard": "~5.0.1",
     "expo-font": "~11.10.3",
-    "expo-notifications": "~0.27.8",
     "@shopify/flash-list": "1.6.3",
     "@react-native-community/netinfo": "11.1.0",
     "@expo-google-fonts/syne": "^0.2.3",
