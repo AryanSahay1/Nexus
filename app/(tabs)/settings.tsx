@@ -7,7 +7,6 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -21,6 +20,7 @@ import { useStore } from 'zustand';
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
+import { FadeSlideIn, PressableScale } from '../../src/components/motion';
 import { wipeAllCredentials } from '../../src/services/tokenService';
 import {
   detectActiveProfile,
@@ -113,160 +113,178 @@ const SettingsScreenInner: React.FC = () => {
       style={styles.flex}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + THEME.spacing.lg }]}
     >
-      <Text style={styles.heading}>SETTINGS</Text>
-      <Text style={styles.subheading}>Configure your AI provider and behavior.</Text>
+      <FadeSlideIn index={0}>
+        <Text style={styles.heading}>SETTINGS</Text>
+      </FadeSlideIn>
+      <FadeSlideIn index={1}>
+        <Text style={styles.subheading}>Configure your AI provider and behavior.</Text>
+      </FadeSlideIn>
 
-      <ClawPanel style={styles.section}>
-        <Text style={styles.sectionTitle}>Connected services & memories</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open vault"
-          onPress={() => router.push('/(tabs)/vault')}
-          style={styles.linkRow}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.linkLabel}>Vault</Text>
-            <Text style={styles.linkHint}>API keys and Google connection</Text>
-          </View>
-          <Text style={styles.linkArrow}>›</Text>
-        </Pressable>
-        <View style={styles.linkDivider} />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open memory"
-          onPress={() => router.push('/(tabs)/memory')}
-          style={styles.linkRow}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={styles.linkLabel}>Memory</Text>
-            <Text style={styles.linkHint}>Saved facts and preferences</Text>
-          </View>
-          <Text style={styles.linkArrow}>›</Text>
-        </Pressable>
-      </ClawPanel>
+      <FadeSlideIn index={2}>
+        <ClawPanel style={styles.section}>
+          <Text style={styles.sectionTitle}>Connected services & memories</Text>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Open vault"
+            onPress={() => router.push('/(tabs)/vault')}
+            style={styles.linkRow}
+            scaleTo={0.98}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.linkLabel}>Vault</Text>
+              <Text style={styles.linkHint}>API keys and Google connection</Text>
+            </View>
+            <Text style={styles.linkArrow}>›</Text>
+          </PressableScale>
+          <View style={styles.linkDivider} />
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Open memory"
+            onPress={() => router.push('/(tabs)/memory')}
+            style={styles.linkRow}
+            scaleTo={0.98}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.linkLabel}>Memory</Text>
+              <Text style={styles.linkHint}>Saved facts and preferences</Text>
+            </View>
+            <Text style={styles.linkArrow}>›</Text>
+          </PressableScale>
+        </ClawPanel>
+      </FadeSlideIn>
 
-      <ClawPanel style={styles.section}>
-        <Text style={styles.sectionTitle}>AI provider</Text>
-        <View style={styles.providerRow}>
-          {PROVIDER_PROFILES.map((p) => {
-            const active = p.id === activeProfile;
-            return (
-              <Pressable
-                key={p.id}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => void handleProviderTap(p.id)}
-                style={[styles.providerChip, active && styles.providerChipActive]}
+      <FadeSlideIn index={3}>
+        <ClawPanel style={styles.section}>
+          <Text style={styles.sectionTitle}>AI provider</Text>
+          <View style={styles.providerRow}>
+            {PROVIDER_PROFILES.map((p) => {
+              const active = p.id === activeProfile;
+              return (
+                <PressableScale
+                  key={p.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => void handleProviderTap(p.id)}
+                  style={[styles.providerChip, active && styles.providerChipActive]}
+                >
+                  <Text style={[styles.providerLabel, active && styles.providerLabelActive]}>
+                    {p.label}
+                  </Text>
+                </PressableScale>
+              );
+            })}
+          </View>
+          <Text style={styles.fieldLabel}>Base URL</Text>
+          <TextInput
+            value={baseDraft}
+            onChangeText={setBaseDraft}
+            onBlur={() => void handleSaveBase()}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.input}
+          />
+          <Text style={styles.fieldLabel}>Model</Text>
+          <TextInput
+            value={modelDraft}
+            onChangeText={setModelDraft}
+            onBlur={() => void handleSaveModel()}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.input}
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modelRow}>
+            {MODEL_PRESETS.map((m) => (
+              <PressableScale
+                key={m}
+                onPress={() => {
+                  setModelDraft(m);
+                  void getSettingsStore().getState().setModel(m);
+                }}
+                style={[styles.modelChip, m === model && styles.modelChipActive]}
               >
-                <Text style={[styles.providerLabel, active && styles.providerLabelActive]}>
-                  {p.label}
+                <Text
+                  style={[styles.modelChipLabel, m === model && styles.modelChipLabelActive]}
+                >
+                  {m}
                 </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Text style={styles.fieldLabel}>Base URL</Text>
-        <TextInput
-          value={baseDraft}
-          onChangeText={setBaseDraft}
-          onBlur={() => void handleSaveBase()}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.input}
-        />
-        <Text style={styles.fieldLabel}>Model</Text>
-        <TextInput
-          value={modelDraft}
-          onChangeText={setModelDraft}
-          onBlur={() => void handleSaveModel()}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.input}
-        />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.modelRow}>
-          {MODEL_PRESETS.map((m) => (
-            <Pressable
-              key={m}
-              onPress={() => {
-                setModelDraft(m);
-                void getSettingsStore().getState().setModel(m);
-              }}
-              style={[styles.modelChip, m === model && styles.modelChipActive]}
+              </PressableScale>
+            ))}
+          </ScrollView>
+        </ClawPanel>
+      </FadeSlideIn>
+
+      <FadeSlideIn index={4}>
+        <ClawPanel style={styles.section}>
+          <Text style={styles.sectionTitle}>Temperature</Text>
+          <View style={styles.tempRow}>
+            <PressableScale
+              onPress={() => void handleTempStep(-0.1)}
+              accessibilityLabel="Decrease temperature"
+              style={styles.tempButton}
             >
-              <Text
-                style={[styles.modelChipLabel, m === model && styles.modelChipLabelActive]}
-              >
-                {m}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </ClawPanel>
+              <Text style={styles.tempButtonLabel}>−</Text>
+            </PressableScale>
+            <Text style={styles.tempValue}>{temperature.toFixed(1)}</Text>
+            <PressableScale
+              onPress={() => void handleTempStep(0.1)}
+              accessibilityLabel="Increase temperature"
+              style={styles.tempButton}
+            >
+              <Text style={styles.tempButtonLabel}>+</Text>
+            </PressableScale>
+          </View>
+          <Text style={styles.tempCaption}>Precise (0.0) — Balanced (0.7) — Creative (1.0+)</Text>
+        </ClawPanel>
+      </FadeSlideIn>
 
-      <ClawPanel style={styles.section}>
-        <Text style={styles.sectionTitle}>Temperature</Text>
-        <View style={styles.tempRow}>
-          <Pressable
-            onPress={() => void handleTempStep(-0.1)}
-            accessibilityLabel="Decrease temperature"
-            style={styles.tempButton}
-          >
-            <Text style={styles.tempButtonLabel}>−</Text>
-          </Pressable>
-          <Text style={styles.tempValue}>{temperature.toFixed(1)}</Text>
-          <Pressable
-            onPress={() => void handleTempStep(0.1)}
-            accessibilityLabel="Increase temperature"
-            style={styles.tempButton}
-          >
-            <Text style={styles.tempButtonLabel}>+</Text>
-          </Pressable>
-        </View>
-        <Text style={styles.tempCaption}>Precise (0.0) — Balanced (0.7) — Creative (1.0+)</Text>
-      </ClawPanel>
+      <FadeSlideIn index={5}>
+        <ClawPanel style={styles.section}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Haptic feedback</Text>
+            <Switch
+              value={hapticsEnabled}
+              onValueChange={(v) => {
+                void getSettingsStore().getState().setHapticsEnabled(v);
+              }}
+              trackColor={{ false: THEME.colors.text.muted, true: THEME.colors.accent.cyan }}
+            />
+          </View>
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Streaming responses</Text>
+            <Switch
+              value={streamingEnabled}
+              onValueChange={(v) => {
+                void getSettingsStore().getState().setStreamingEnabled(v);
+              }}
+              trackColor={{ false: THEME.colors.text.muted, true: THEME.colors.accent.cyan }}
+            />
+          </View>
+        </ClawPanel>
+      </FadeSlideIn>
 
-      <ClawPanel style={styles.section}>
-        <Text style={styles.sectionTitle}>Preferences</Text>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Haptic feedback</Text>
-          <Switch
-            value={hapticsEnabled}
-            onValueChange={(v) => {
-              void getSettingsStore().getState().setHapticsEnabled(v);
-            }}
-            trackColor={{ false: THEME.colors.text.muted, true: THEME.colors.accent.cyan }}
-          />
-        </View>
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Streaming responses</Text>
-          <Switch
-            value={streamingEnabled}
-            onValueChange={(v) => {
-              void getSettingsStore().getState().setStreamingEnabled(v);
-            }}
-            trackColor={{ false: THEME.colors.text.muted, true: THEME.colors.accent.cyan }}
-          />
-        </View>
-      </ClawPanel>
+      <FadeSlideIn index={6}>
+        <ClawPanel style={styles.section}>
+          <Text style={styles.sectionTitle}>About</Text>
+          <Text style={styles.aboutLine}>Version {Constants.expoConfig?.version ?? '0.1.0'}</Text>
+          <Text style={styles.aboutLine}>github.com/AryanSahay1/Nexus</Text>
+          <Text style={styles.aboutLine}>Local-first. No data leaves this device.</Text>
+        </ClawPanel>
+      </FadeSlideIn>
 
-      <ClawPanel style={styles.section}>
-        <Text style={styles.sectionTitle}>About</Text>
-        <Text style={styles.aboutLine}>Version {Constants.expoConfig?.version ?? '0.1.0'}</Text>
-        <Text style={styles.aboutLine}>github.com/AryanSahay1/Nexus</Text>
-        <Text style={styles.aboutLine}>Local-first. No data leaves this device.</Text>
-      </ClawPanel>
-
-      <ClawPanel tone="danger" style={styles.section}>
-        <Text style={styles.dangerTitle}>Danger zone</Text>
-        <View style={{ marginTop: THEME.spacing.md }}>
-          <GlowButton
-            label="Factory reset"
-            variant="danger"
-            fullWidth
-            onPress={handleResetEverything}
-          />
-        </View>
-      </ClawPanel>
+      <FadeSlideIn index={7}>
+        <ClawPanel tone="danger" style={styles.section}>
+          <Text style={styles.dangerTitle}>Danger zone</Text>
+          <View style={{ marginTop: THEME.spacing.md }}>
+            <GlowButton
+              label="Factory reset"
+              variant="danger"
+              fullWidth
+              onPress={handleResetEverything}
+            />
+          </View>
+        </ClawPanel>
+      </FadeSlideIn>
     </ScrollView>
   );
 };

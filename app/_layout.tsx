@@ -33,6 +33,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ErrorBoundary } from '../src/components/shared/ErrorBoundary';
+import { FadeSlideIn, Float, Pulse } from '../src/components/motion';
 import { bootstrap, type BootstrapResult } from '../src/services/bootstrap';
 import { type BootFailure } from '../src/utils/bootSequencer';
 import {
@@ -173,15 +174,33 @@ const RootLayout: React.FC = () => {
   }, [router]);
 
   if (!fontsLoaded || boot.kind === 'pending') {
+    // Splash choreography (skill §9):
+    //   - The bolt glyph floats continuously so the screen never looks
+    //     frozen, even on a cold boot where bootstrap takes a moment.
+    //   - The brand and tagline cascade in via FadeSlideIn with stagger
+    //     indices so the eye reads them top-to-bottom over ~300ms.
+    //   - The "Initializing" dot pulses subtly to telegraph live work.
     return (
       <View style={styles.splash} onLayout={onLayout}>
         <Animated.View
           entering={FadeIn.duration(THEME.animation.fastIn)}
           style={styles.splashInner}
         >
-          <Text style={styles.bolt}>⚡</Text>
-          <Text style={styles.brand}>NEXUS</Text>
-          <Text style={styles.tagline}>Local AI Agent</Text>
+          <Float amplitudeDp={6} periodMs={2400}>
+            <Text style={styles.bolt}>⚡</Text>
+          </Float>
+          <FadeSlideIn index={1} fromY={14}>
+            <Text style={styles.brand}>NEXUS</Text>
+          </FadeSlideIn>
+          <FadeSlideIn index={2} fromY={10}>
+            <Text style={styles.tagline}>Local AI Agent</Text>
+          </FadeSlideIn>
+          <FadeSlideIn index={3} fromY={8} style={styles.splashStatusRow}>
+            <Pulse minOpacity={0.35} maxOpacity={1} minScale={0.85} maxScale={1.15}>
+              <View style={styles.splashDot} />
+            </Pulse>
+            <Text style={styles.splashStatusLabel}>Initializing</Text>
+          </FadeSlideIn>
         </Animated.View>
       </View>
     );
@@ -314,7 +333,26 @@ const styles = StyleSheet.create({
     padding: THEME.spacing.xl,
   },
   splashInner: { alignItems: 'center', gap: THEME.spacing.sm },
-  bolt: { fontSize: 40, color: THEME.colors.accent.cyan },
+  bolt: { fontSize: 56, color: THEME.colors.accent.cyan },
+  splashStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.sm,
+    marginTop: THEME.spacing.lg,
+  },
+  splashDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.colors.accent.cyan,
+  },
+  splashStatusLabel: {
+    fontFamily: THEME.fonts.body,
+    fontSize: THEME.fontSizes.xs,
+    color: THEME.colors.text.muted,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
   errorGlyph: {
     fontSize: 40,
     color: THEME.colors.accent.coral,

@@ -8,16 +8,17 @@
 
 import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
-import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { THEME } from '../../src/theme';
+import { DURATIONS, EASINGS, THEME } from '../../src/theme';
 
 interface TabDescriptor {
   readonly name: string;
@@ -31,6 +32,56 @@ const TABS: readonly TabDescriptor[] = [
   { name: 'calendar', label: 'Calendar', glyph: '📅' },
   { name: 'settings', label: 'Settings', glyph: '⚙' },
 ];
+
+/**
+ * Per-tab pressable. The focused glyph scales up to 1.1× via a snappy
+ * spring (skill §12 — micro-interaction "trigger feedback"), and the
+ * inactive glyphs settle back to 1.0×. The label fades in / out rather
+ * than popping, so the row reads as a single fluid element instead of
+ * four separate buttons fighting for the user's eye.
+ */
+interface TabButtonProps {
+  readonly focused: boolean;
+  readonly descriptor: TabDescriptor;
+  readonly onPress: () => void;
+}
+
+const TabButton: React.FC<TabButtonProps> = ({ focused, descriptor, onPress }) => {
+  const glyphScale = useSharedValue(focused ? 1.1 : 1);
+  const labelOpacity = useSharedValue(focused ? 1 : 0);
+
+  useEffect(() => {
+    glyphScale.value = withSpring(focused ? 1.1 : 1, THEME.motion.springs.snappy);
+    labelOpacity.value = withTiming(focused ? 1 : 0, {
+      duration: DURATIONS.normal,
+      easing: EASINGS.out,
+    });
+  }, [focused, glyphScale, labelOpacity]);
+
+  const glyphStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: glyphScale.value }],
+  }));
+  const labelStyle = useAnimatedStyle(() => ({ opacity: labelOpacity.value }));
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${descriptor.label} tab`}
+      accessibilityState={{ selected: focused }}
+      style={({ pressed }) => [styles.tab, { opacity: pressed ? 0.85 : 1 }]}
+    >
+      <Animated.Text
+        style={[styles.glyph, focused && styles.glyphActive, glyphStyle]}
+      >
+        {descriptor.glyph}
+      </Animated.Text>
+      <Animated.Text style={[styles.label, labelStyle]}>
+        {descriptor.label}
+      </Animated.Text>
+    </Pressable>
+  );
+};
 
 interface CustomTabBarProps {
   readonly state: { readonly index: number; readonly routes: readonly { readonly name: string; readonly key: string }[] };
@@ -89,19 +140,12 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, navigation }) => {
       {ordered.map((descriptor, idx) => {
         const focused = state.index === idx;
         return (
-          <Pressable
+          <TabButton
             key={descriptor.name}
+            focused={focused}
+            descriptor={descriptor}
             onPress={() => onPress(descriptor)}
-            accessibilityRole="button"
-            accessibilityLabel={`${descriptor.label} tab`}
-            accessibilityState={{ selected: focused }}
-            style={({ pressed }) => [styles.tab, { opacity: pressed ? 0.85 : 1 }]}
-          >
-            <Text style={[styles.glyph, focused && styles.glyphActive]}>
-              {descriptor.glyph}
-            </Text>
-            {focused ? <Text style={styles.label}>{descriptor.label}</Text> : null}
-          </Pressable>
+          />
         );
       })}
     </View>

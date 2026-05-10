@@ -1,11 +1,22 @@
 /**
  * StatusPill — small color-coded badge used for connection state and tags.
+ *
+ * Motion (skill §12): every time the `tone` or `label` actually changes,
+ * the pill snaps to scale 0.85 and springs back to 1.0 — the eye reads
+ * this as "this status just updated". Mount also runs the same in-spring
+ * so the pill never just pops onto the screen.
  */
 
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { THEME } from '../../theme';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 
 export type StatusTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral';
 
@@ -55,15 +66,35 @@ const toneStyle = (
 
 const StatusPillImpl: React.FC<StatusPillProps> = ({ label, tone = 'neutral', testID }) => {
   const t = toneStyle(tone);
+  const reduceMotion = useReduceMotion();
+  const scale = useSharedValue(reduceMotion ? 1 : 0.85);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      scale.value = 1;
+      return;
+    }
+    scale.value = 0.85;
+    scale.value = withSpring(1, THEME.motion.springs.snappy);
+  }, [label, tone, reduceMotion, scale]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <View
+    <Animated.View
       testID={testID}
-      style={[styles.pill, { backgroundColor: t.bg, borderColor: t.border }]}
+      style={[
+        styles.pill,
+        { backgroundColor: t.bg, borderColor: t.border },
+        animatedStyle,
+      ]}
     >
       <Text style={[styles.label, { color: t.color }]} numberOfLines={1}>
         {label}
       </Text>
-    </View>
+    </Animated.View>
   );
 };
 

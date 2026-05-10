@@ -14,7 +14,6 @@
 import React, { useCallback, useState } from 'react';
 import {
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,6 +26,11 @@ import { useStore } from 'zustand';
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
+import {
+  CountUp,
+  FadeSlideIn,
+  PressableScale,
+} from '../../src/components/motion';
 import { type PreferenceCategory } from '../../src/db/preferencesRepo';
 import { getChatStore } from '../../src/store/chatStore';
 import { getPreferencesStore } from '../../src/store/preferencesStore';
@@ -91,107 +95,130 @@ const MemoryScreenInner: React.FC = () => {
       style={styles.flex}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + THEME.spacing.lg }]}
     >
-      <Text style={styles.heading}>MEMORY</Text>
-      <Text style={styles.subheading}>What Nexus remembers about you</Text>
+      <FadeSlideIn index={0}>
+        <Text style={styles.heading}>MEMORY</Text>
+      </FadeSlideIn>
+      <FadeSlideIn index={1}>
+        <Text style={styles.subheading}>What Nexus remembers about you</Text>
+      </FadeSlideIn>
 
+      {/* Stat tiles — CountUp eases each number in from 0 (skill §9, value
+          change). The three tiles cascade in via FadeSlideIn so the row
+          reads left-to-right over ~180ms. */}
       <View style={styles.tilesRow}>
-        <ClawPanel style={styles.tile}>
-          <Text style={styles.tileNumber}>{entries.length}</Text>
-          <Text style={styles.tileLabel}>Saved facts</Text>
-        </ClawPanel>
-        <ClawPanel style={styles.tile}>
-          <Text style={styles.tileNumber}>1</Text>
-          <Text style={styles.tileLabel}>Conversation</Text>
-        </ClawPanel>
-        <ClawPanel style={styles.tile}>
-          <Text style={styles.tileNumber}>{messageCount}</Text>
-          <Text style={styles.tileLabel}>Messages</Text>
-        </ClawPanel>
+        <FadeSlideIn index={2} style={styles.tileFlex}>
+          <ClawPanel style={styles.tile}>
+            <CountUp value={entries.length} style={styles.tileNumber} />
+            <Text style={styles.tileLabel}>Saved facts</Text>
+          </ClawPanel>
+        </FadeSlideIn>
+        <FadeSlideIn index={3} style={styles.tileFlex}>
+          <ClawPanel style={styles.tile}>
+            <CountUp value={1} style={styles.tileNumber} />
+            <Text style={styles.tileLabel}>Conversation</Text>
+          </ClawPanel>
+        </FadeSlideIn>
+        <FadeSlideIn index={4} style={styles.tileFlex}>
+          <ClawPanel style={styles.tile}>
+            <CountUp value={messageCount} style={styles.tileNumber} />
+            <Text style={styles.tileLabel}>Messages</Text>
+          </ClawPanel>
+        </FadeSlideIn>
       </View>
 
-      <ClawPanel style={styles.section}>
-        <Text style={styles.sectionTitle}>Add a fact</Text>
-        <Text style={styles.sectionHint}>
-          These get injected into every system prompt automatically.
-        </Text>
-        <TextInput
-          value={key}
-          onChangeText={setKey}
-          placeholder="key  e.g. email_tone"
-          placeholderTextColor={THEME.colors.text.muted}
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={styles.input}
-        />
-        <TextInput
-          value={value}
-          onChangeText={setValue}
-          placeholder="value  e.g. always professional"
-          placeholderTextColor={THEME.colors.text.muted}
-          style={styles.input}
-        />
-        <View style={styles.categoryRow}>
-          {CATEGORIES.map((c) => {
-            const active = c === category;
-            return (
-              <Pressable
-                key={c}
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
-                onPress={() => setCategory(c)}
-                style={[styles.chip, active && styles.chipActive]}
-              >
-                <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{c}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <View style={{ marginTop: THEME.spacing.md }}>
-          <GlowButton
-            label="Save fact"
-            variant="primary"
-            fullWidth
-            loading={saving}
-            disabled={key.trim().length === 0 || value.length === 0}
-            onPress={() => void handleAdd()}
+      <FadeSlideIn index={5}>
+        <ClawPanel style={styles.section}>
+          <Text style={styles.sectionTitle}>Add a fact</Text>
+          <Text style={styles.sectionHint}>
+            These get injected into every system prompt automatically.
+          </Text>
+          <TextInput
+            value={key}
+            onChangeText={setKey}
+            placeholder="key  e.g. email_tone"
+            placeholderTextColor={THEME.colors.text.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={styles.input}
           />
-        </View>
-      </ClawPanel>
+          <TextInput
+            value={value}
+            onChangeText={setValue}
+            placeholder="value  e.g. always professional"
+            placeholderTextColor={THEME.colors.text.muted}
+            style={styles.input}
+          />
+          <View style={styles.categoryRow}>
+            {CATEGORIES.map((c) => {
+              const active = c === category;
+              return (
+                <PressableScale
+                  key={c}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setCategory(c)}
+                  style={[styles.chip, active && styles.chipActive]}
+                >
+                  <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{c}</Text>
+                </PressableScale>
+              );
+            })}
+          </View>
+          <View style={{ marginTop: THEME.spacing.md }}>
+            <GlowButton
+              label="Save fact"
+              variant="primary"
+              fullWidth
+              loading={saving}
+              disabled={key.trim().length === 0 || value.length === 0}
+              onPress={() => void handleAdd()}
+            />
+          </View>
+        </ClawPanel>
+      </FadeSlideIn>
 
-      <ClawPanel style={styles.section}>
-        <Text style={styles.sectionTitle}>Saved facts</Text>
-        {entries.length === 0 ? (
-          <Text style={styles.empty}>No facts saved yet.</Text>
-        ) : (
-          entries.map((e) => (
-            <Pressable
-              key={e.key}
-              onLongPress={() => handleDelete(e.key)}
-              accessibilityRole="button"
-              accessibilityHint="Long press to delete"
-              style={styles.factRow}
-            >
-              <Text style={styles.factKey} numberOfLines={1}>
-                {e.key}
-              </Text>
-              <Text style={styles.factValue} numberOfLines={2}>
-                {e.value}
-              </Text>
-              <Text style={styles.factCategory}>{e.category}</Text>
-            </Pressable>
-          ))
-        )}
-      </ClawPanel>
+      <FadeSlideIn index={6}>
+        <ClawPanel style={styles.section}>
+          <Text style={styles.sectionTitle}>Saved facts</Text>
+          {entries.length === 0 ? (
+            <Text style={styles.empty}>No facts saved yet.</Text>
+          ) : (
+            entries.map((e, i) => (
+              // Per-row staggered entrance reads as the list "loading in"
+              // even though the data is already on-device. (skill §9 §13)
+              <FadeSlideIn key={e.key} index={i} fromY={6}>
+                <PressableScale
+                  onLongPress={() => handleDelete(e.key)}
+                  accessibilityRole="button"
+                  accessibilityHint="Long press to delete"
+                  style={styles.factRow}
+                  scaleTo={0.98}
+                >
+                  <Text style={styles.factKey} numberOfLines={1}>
+                    {e.key}
+                  </Text>
+                  <Text style={styles.factValue} numberOfLines={2}>
+                    {e.value}
+                  </Text>
+                  <Text style={styles.factCategory}>{e.category}</Text>
+                </PressableScale>
+              </FadeSlideIn>
+            ))
+          )}
+        </ClawPanel>
+      </FadeSlideIn>
 
-      <ClawPanel tone="danger" style={styles.section}>
-        <Text style={styles.dangerTitle}>Danger zone</Text>
-        <Text style={styles.dangerHint}>
-          These actions cannot be undone.
-        </Text>
-        <View style={{ marginTop: THEME.spacing.md }}>
-          <GlowButton label="Clear all memories" variant="danger" fullWidth onPress={handleClearAll} />
-        </View>
-      </ClawPanel>
+      <FadeSlideIn index={7}>
+        <ClawPanel tone="danger" style={styles.section}>
+          <Text style={styles.dangerTitle}>Danger zone</Text>
+          <Text style={styles.dangerHint}>
+            These actions cannot be undone.
+          </Text>
+          <View style={{ marginTop: THEME.spacing.md }}>
+            <GlowButton label="Clear all memories" variant="danger" fullWidth onPress={handleClearAll} />
+          </View>
+        </ClawPanel>
+      </FadeSlideIn>
     </ScrollView>
   );
 };
@@ -223,6 +250,7 @@ const styles = StyleSheet.create({
     gap: THEME.spacing.md,
     marginBottom: THEME.spacing.lg,
   },
+  tileFlex: { flex: 1 },
   tile: {
     flex: 1,
     alignItems: 'center',

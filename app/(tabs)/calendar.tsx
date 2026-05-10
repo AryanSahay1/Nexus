@@ -31,7 +31,7 @@ import { useStore } from 'zustand';
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
-import { FadeSlideIn, SkeletonShimmer } from '../../src/components/motion';
+import { FadeSlideIn, PressableScale, SkeletonShimmer } from '../../src/components/motion';
 import * as googleService from '../../src/services/googleService';
 import * as notificationService from '../../src/services/notificationService';
 import { getVaultStore } from '../../src/store/vaultStore';
@@ -241,7 +241,7 @@ const CalendarScreenInner: React.FC = () => {
         {RANGES.map((r) => {
           const active = r.id === range;
           return (
-            <Pressable
+            <PressableScale
               key={r.id}
               onPress={() => setRange(r.id)}
               accessibilityRole="button"
@@ -256,7 +256,7 @@ const CalendarScreenInner: React.FC = () => {
               >
                 {r.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           );
         })}
       </View>

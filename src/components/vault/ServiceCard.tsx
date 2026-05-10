@@ -15,6 +15,7 @@ import { THEME } from '../../theme';
 import { ClawPanel } from '../shared/ClawPanel';
 import { GlowButton } from '../shared/GlowButton';
 import { StatusPill } from '../shared/StatusPill';
+import { FadeSlideIn } from '../motion';
 
 export interface ServiceCardProps {
   readonly provider: Provider;
@@ -76,7 +77,7 @@ const ServiceCardImpl: React.FC<ServiceCardProps> = ({
       </View>
 
       {connected ? (
-        <View style={styles.connectedBlock}>
+        <FadeSlideIn fromY={6} style={styles.connectedBlock}>
           {connection.userEmail !== null ? (
             <Text style={styles.email}>{connection.userEmail}</Text>
           ) : null}
@@ -103,7 +104,7 @@ const ServiceCardImpl: React.FC<ServiceCardProps> = ({
               />
             </View>
           </View>
-        </View>
+        </FadeSlideIn>
       ) : (
         <View style={styles.disconnectedBlock}>
           {unavailableReason !== undefined ? (
