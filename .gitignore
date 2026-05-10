@@ -26,3 +26,11 @@ android/
 .cursor/
 
 .metro-health-check*
+
+# Native Android build artefacts left over from prior branches
+.android-sdk/
+.gradle/
+local.properties
+release/
+app/build/
+app/intermediates/

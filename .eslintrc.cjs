@@ -17,4 +17,16 @@ module.exports = {
     ],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
   },
+  overrides: [
+    {
+      // Jest mock factories MUST be hoisted before the imports they shadow
+      // (jest.mock() is jest-hoisted by Babel anyway), so `import/first`
+      // and the unused-expression rules are off-limits noise in test files.
+      files: ['__tests__/**/*.ts', '__tests__/**/*.tsx'],
+      rules: {
+        'import/first': 'off',
+        '@typescript-eslint/no-non-null-assertion': 'off',
+      },
+    },
+  ],
 };
