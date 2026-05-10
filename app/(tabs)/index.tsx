@@ -13,7 +13,7 @@
 
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -24,6 +24,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from 'zustand';
 
@@ -32,10 +40,12 @@ import { GlowButton } from '../../src/components/shared/GlowButton';
 import { ConfirmationSheet } from '../../src/components/chat/ConfirmationSheet';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { MessageBubble } from '../../src/components/chat/MessageBubble';
+import { StatusPill } from '../../src/components/shared/StatusPill';
 import { ToolExecutionBadge } from '../../src/components/chat/ToolExecutionBadge';
 import { TypingIndicator } from '../../src/components/chat/TypingIndicator';
 import { useAgentLoop } from '../../src/hooks/useAgentLoop';
 import { useConfirmation } from '../../src/hooks/useConfirmation';
+import { useVoiceInput } from '../../src/hooks/useVoiceInput';
 import { getChatStore } from '../../src/store/chatStore';
 import { getSettingsStore } from '../../src/store/settingsStore';
 import { getVaultStore } from '../../src/store/vaultStore';
@@ -68,6 +78,40 @@ const ChatScreenInner: React.FC = () => {
 
   const [text, setText] = useState('');
   const [showBanner, setShowBanner] = useState(true);
+
+  // Voice input: tap mic to record, tap again to stop. Transcript fills
+  // the input bar so the user can review and edit before sending.
+  const voice = useVoiceInput();
+  const pulse = useSharedValue(1);
+  useEffect(() => {
+    if (voice.isRecording) {
+      pulse.value = withRepeat(
+        withTiming(1.18, { duration: 600, easing: Easing.inOut(Easing.quad) }),
+        -1,
+        true,
+      );
+    } else {
+      cancelAnimation(pulse);
+      pulse.value = withTiming(1, { duration: 150 });
+    }
+    return (): void => cancelAnimation(pulse);
+  }, [voice.isRecording, pulse]);
+  useEffect(() => {
+    if (voice.transcript !== null && voice.transcript.length > 0) {
+      setText((prev) => (prev.length === 0 ? voice.transcript! : `${prev} ${voice.transcript!}`));
+      voice.reset();
+    }
+  }, [voice.transcript, voice]);
+
+  const micAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+
+  const handleMicPress = useCallback(async (): Promise<void> => {
+    if (voice.isRecording) {
+      await voice.stopRecording();
+      return;
+    }
+    await voice.startRecording();
+  }, [voice]);
 
   const handleSend = useCallback(async (): Promise<void> => {
     const trimmed = text.trim();
@@ -179,7 +223,35 @@ const ChatScreenInner: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={insets.bottom}
       >
+        {voice.error !== null ? (
+          <View style={styles.voiceErrorRow}>
+            <StatusPill
+              label={voice.error.message}
+              tone="warning"
+              testID="voice-error-pill"
+            />
+          </View>
+        ) : null}
         <View style={[styles.inputBar, { paddingBottom: insets.bottom + THEME.spacing.md }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={voice.isRecording ? 'Stop recording' : 'Start voice recording'}
+            onPress={() => void handleMicPress()}
+            disabled={voice.isTranscribing || isAgentBusy}
+            hitSlop={THEME.hitSlop}
+            testID="chat-mic-button"
+            style={({ pressed }) => [styles.micButton, { opacity: pressed ? 0.85 : 1 }]}
+          >
+            <Animated.View
+              style={[
+                styles.micCore,
+                voice.isRecording ? styles.micCoreRecording : styles.micCoreIdle,
+                micAnimatedStyle,
+              ]}
+            >
+              <Text style={styles.micGlyph}>{voice.isTranscribing ? '…' : '🎙'}</Text>
+            </Animated.View>
+          </Pressable>
           <TextInput
             value={text}
             onChangeText={setText}
@@ -192,6 +264,7 @@ const ChatScreenInner: React.FC = () => {
             blurOnSubmit
             onSubmitEditing={() => void handleSend()}
             accessibilityLabel="Message input"
+            testID="chat-input"
           />
           <GlowButton
             label="Send"
@@ -200,6 +273,7 @@ const ChatScreenInner: React.FC = () => {
             loading={isAgentBusy}
             hapticsEnabled={hapticsEnabled}
             onPress={() => void handleSend()}
+            testID="chat-send"
           />
         </View>
       </KeyboardAvoidingView>
@@ -320,6 +394,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: THEME.spacing.lg,
     paddingTop: THEME.spacing.md,
     gap: THEME.spacing.md,
+  },
+  voiceErrorRow: {
+    paddingHorizontal: THEME.spacing.lg,
+    paddingBottom: THEME.spacing.sm,
+    backgroundColor: THEME.colors.background.surface,
+  },
+  micButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 4,
+  },
+  micCore: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  micCoreIdle: {
+    backgroundColor: THEME.colors.background.elevated,
+    borderColor: THEME.colors.border.default,
+  },
+  micCoreRecording: {
+    backgroundColor: THEME.colors.accentFill.coralStrong,
+    borderColor: THEME.colors.border.danger,
+  },
+  micGlyph: {
+    fontSize: 18,
+    color: THEME.colors.text.primary,
   },
   textInput: {
     flex: 1,

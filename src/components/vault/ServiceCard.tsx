@@ -24,6 +24,14 @@ export interface ServiceCardProps {
   readonly onDisconnect: () => void;
   readonly disabled?: boolean;
   readonly testID?: string;
+  /**
+   * When provided, the disconnected-state Connect button is replaced
+   * with a yellow StatusPill carrying this message — used by the Vault
+   * screen to surface "Set EXPO_PUBLIC_GOOGLE_CLIENT_ID to enable" when
+   * the build-time env var is missing instead of crashing inside the
+   * OAuth flow.
+   */
+  readonly unavailableReason?: string;
 }
 
 const labels: Record<Provider, { title: string; description: string }> = {
@@ -49,6 +57,7 @@ const ServiceCardImpl: React.FC<ServiceCardProps> = ({
   onDisconnect,
   disabled = false,
   testID,
+  unavailableReason,
 }) => {
   const meta = labels[provider];
   const connected = connection.status === 'connected';
@@ -97,13 +106,22 @@ const ServiceCardImpl: React.FC<ServiceCardProps> = ({
         </View>
       ) : (
         <View style={styles.disconnectedBlock}>
-          <GlowButton
-            label={`Connect ${meta.title}`}
-            variant="primary"
-            fullWidth
-            onPress={onConnect}
-            disabled={disabled}
-          />
+          {unavailableReason !== undefined ? (
+            <View
+              style={styles.unavailableRow}
+              testID={`${provider}-unavailable-reason`}
+            >
+              <StatusPill label={unavailableReason} tone="warning" />
+            </View>
+          ) : (
+            <GlowButton
+              label={`Connect ${meta.title}`}
+              variant="primary"
+              fullWidth
+              onPress={onConnect}
+              disabled={disabled}
+            />
+          )}
         </View>
       )}
     </ClawPanel>
@@ -151,6 +169,10 @@ const styles = StyleSheet.create({
   actionFlex: { flex: 1 },
   disconnectedBlock: {
     marginTop: THEME.spacing.md,
+  },
+  unavailableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
 

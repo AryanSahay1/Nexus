@@ -1,0 +1,63 @@
+name: CI
+
+# Quality pipeline: every push to `main` and every PR runs the same four
+# gates we run locally before opening a PR (tsc, eslint, jest, security
+# greps). The job fails fast on the first non-zero exit so the offending
+# commit is obvious from the GitHub Actions summary.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    name: Quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        # `--legacy-peer-deps` matches the local install convention — Expo SDK
+        # 50 still ships some peerDependency lockstep mismatches that npm 9+
+        # would otherwise refuse without this flag.
+        run: npm ci --legacy-peer-deps
+
+      - name: GATE 1 — typecheck (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: GATE 2 — lint (eslint, --max-warnings 0)
+        run: npx eslint src __tests__ --ext .ts,.tsx --max-warnings 0
+
+      - name: GATE 3 — unit tests (jest --ci --coverage)
+        run: npx jest --ci --coverage
+
+      - name: GATE 4 — security greps
+        # Each grep MUST return zero matches. We invert the exit code so the
+        # job fails when grep finds anything (because grep exits 1 on
+        # zero matches, which is what we want).
+        run: |
+          set -e
+          ! grep -rn "AsyncStorage" src
+          ! grep -rn "console\.log"  src
+          ! grep -rn ": any"          src
+          ! grep -rn "TODO"           src
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
