@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "Nexus",
+    "slug": "nexus",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "nexus",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B0F14"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nexus.app",
+      "infoPlist": {
+        "NSContactsUsageDescription": "Nexus needs access to contacts so the agent can resolve names you mention into phone numbers and email addresses.",
+        "NSMicrophoneUsageDescription": "Nexus uses the microphone to transcribe your voice commands locally before sending to your configured speech-to-text provider.",
+        "NSLocationWhenInUseUsageDescription": "Nexus uses your location only when you ask the agent for location-aware tasks (e.g. travel time to an event).",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.nexus.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B0F14"
+      },
+      "permissions": [
+        "READ_CONTACTS",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-sqlite",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Nexus to access your contacts so the agent can resolve names to phone numbers."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Nexus to use your location for location-aware agent tasks."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Nexus to access the microphone for voice input."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
