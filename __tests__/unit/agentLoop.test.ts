@@ -195,6 +195,23 @@ describe('runAgent — straight response (no tool call)', () => {
     }
   });
 
+  it('returns a templated message when finish_reason is content_filter', async () => {
+    const { adapter } = buildOpenAiAdapter([
+      // Some OpenAI safety responses come back with a non-null content
+      // alongside content_filter; some don't. Either way, we render a
+      // templated apology so the user sees something coherent.
+      { content: null, finishReason: 'content_filter' },
+    ]);
+    apiInternal.getInstance().defaults.adapter = adapter;
+
+    const result = await runAgent({ userMessage: 'flagged content', persist: false });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.stopReason).toBe('stop');
+      expect(result.value.text).toContain('content filter');
+    }
+  });
+
   it('returns TOKEN_NOT_FOUND when no OpenAI key is configured', async () => {
     SecureStore.__reset();
     // Wipe the seeded key.

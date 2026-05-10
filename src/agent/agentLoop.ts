@@ -162,13 +162,18 @@ export const runAgent = async (
         : {}),
     });
 
-    if (choice.finish_reason === 'stop' || assistantMessage.tool_calls === undefined) {
-      const text = assistantMessage.content ?? '';
+    // Check content_filter BEFORE the generic "no tool_calls → final answer"
+    // branch — OpenAI returns content_filter with `content: null` and no
+    // `tool_calls`, which matches both shapes; we want the templated
+    // apology to win.
+    if (choice.finish_reason === 'content_filter') {
+      const text =
+        'I cannot complete that request because it was blocked by the content filter.';
       if (persist) {
         const persisted = await insertMessage({ role: 'assistant', content: text });
         if (!persisted.ok) return persisted;
       }
-      logEvent('agent_loop_complete', { iteration, finish_reason: 'stop' });
+      logEvent('agent_loop_complete', { iteration, finish_reason: 'content_filter' });
       return ok({
         text,
         iterations: iteration,
@@ -177,13 +182,13 @@ export const runAgent = async (
       });
     }
 
-    if (choice.finish_reason === 'content_filter') {
-      const text =
-        'I cannot complete that request because it was blocked by the content filter.';
+    if (choice.finish_reason === 'stop' || assistantMessage.tool_calls === undefined) {
+      const text = assistantMessage.content ?? '';
       if (persist) {
         const persisted = await insertMessage({ role: 'assistant', content: text });
         if (!persisted.ok) return persisted;
       }
+      logEvent('agent_loop_complete', { iteration, finish_reason: 'stop' });
       return ok({
         text,
         iterations: iteration,

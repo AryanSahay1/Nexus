@@ -11,7 +11,7 @@
  */
 
 import { router } from 'expo-router';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
@@ -20,6 +20,17 @@ import { useUiStore } from '../src/store/uiStore';
 export default function ConfirmModal(): React.ReactElement {
   const pending = useUiStore((s) => s.pendingConfirmation);
   const resolve = useUiStore((s) => s.resolve);
+
+  // If the user lands on /confirm with nothing queued (deep link, manual
+  // navigation, stale link…), bounce back. Doing this in `useEffect` keeps
+  // the render itself pure — earlier we called router.back() from the
+  // render body, which is a React anti-pattern because side-effects in
+  // render can fire repeatedly during reconciliation.
+  useEffect(() => {
+    if (pending === null) {
+      router.back();
+    }
+  }, [pending]);
 
   const handleCancel = useCallback((): void => {
     pending?.onCancel();
@@ -34,9 +45,6 @@ export default function ConfirmModal(): React.ReactElement {
   }, [pending, resolve]);
 
   if (pending === null) {
-    // Defensive guard — if the user navigated here directly with no
-    // request queued, just bounce back. Never leave a blank modal up.
-    setTimeout(() => router.back(), 0);
     return <View style={styles.empty} />;
   }
 
