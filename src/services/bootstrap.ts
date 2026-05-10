@@ -22,8 +22,22 @@
  *                              code to the contacts tool.
  */
 
-import * as ReactNativeAppAuth from 'react-native-app-auth';
-import * as ExpoContacts from 'expo-contacts';
+// IMPORTANT: react-native-app-auth and expo-contacts are NOT imported at
+// module level. Their native bridge init runs when the module's top-level
+// code evaluates, and on some OEM Android variants (Vivo / FunTouch is
+// the documented case) that bridge init can crash before any JS runs —
+// which would close the app immediately with no UI. By lazy-`require`ing
+// them inside `buildAppAuthBackend()` and `buildContactsBackend()`, the
+// native init is deferred to first use (Connect Google button tap, or
+// system_contacts_search tool invocation), so a misbehaving native lib
+// degrades gracefully into a single-feature outage instead of a hard
+// app-wide crash.
+//
+// The `unknown` typing on the lazy-required modules is a deliberate
+// concession: the underlying packages do not export typed module
+// objects after a `require()` call without their own .d.ts wrapper, and
+// loading them strictly typed would force us back to module-level imports.
+// All access is gated behind narrow runtime guards.
 
 import { initializeDatabase } from '../db/database';
 import {
@@ -61,12 +75,79 @@ import {
 import { logEvent } from '../utils/logger';
 
 /**
+ * Lazy module loaders. Each call returns `{ ok: T } | { ok: false, error }`.
+ * The `require()` happens inside the function body so the native bridge
+ * does not initialize until the user actually invokes the dependent
+ * feature. `require()` returns `unknown` here because we deliberately do
+ * not import these modules' types at module-level either.
+ */
+type AppAuthModule = {
+  authorize: (cfg: unknown) => Promise<unknown>;
+  refresh: (cfg: unknown, params: unknown) => Promise<unknown>;
+};
+
+type ContactsModule = {
+  Fields: { Name: string; PhoneNumbers: string };
+  requestPermissionsAsync: () => Promise<{ status: string }>;
+  getContactsAsync: (opts: {
+    fields: readonly string[];
+  }) => Promise<{
+    data: readonly {
+      id?: string;
+      name?: string;
+      phoneNumbers?: readonly { number?: string; label?: string | null }[];
+    }[];
+  }>;
+};
+
+const isAppAuthModule = (m: unknown): m is AppAuthModule =>
+  typeof m === 'object' &&
+  m !== null &&
+  typeof (m as Record<string, unknown>).authorize === 'function' &&
+  typeof (m as Record<string, unknown>).refresh === 'function';
+
+const isContactsModule = (m: unknown): m is ContactsModule =>
+  typeof m === 'object' &&
+  m !== null &&
+  typeof (m as Record<string, unknown>).requestPermissionsAsync === 'function' &&
+  typeof (m as Record<string, unknown>).getContactsAsync === 'function';
+
+const lazyAppAuth = (): AppAuthModule => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+  const mod = require('react-native-app-auth') as unknown;
+  if (!isAppAuthModule(mod)) {
+    throw new NexusError(
+      'PROVIDER_ERROR',
+      'react-native-app-auth module shape is unexpected.',
+      { isRetryable: false },
+    );
+  }
+  return mod;
+};
+
+const lazyContacts = (): ContactsModule => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+  const mod = require('expo-contacts') as unknown;
+  if (!isContactsModule(mod)) {
+    throw new NexusError(
+      'PROVIDER_ERROR',
+      'expo-contacts module shape is unexpected.',
+      { isRetryable: false },
+    );
+  }
+  return mod;
+};
+
+/**
  * Adapt the `react-native-app-auth` runtime to the abstract
- * `AppAuthBackend` shape oauthService consumes.
+ * `AppAuthBackend` shape oauthService consumes. The actual `require`
+ * happens at first use inside `authorize()` / `refresh()` — never at
+ * boot time.
  */
 const buildAppAuthBackend = (): AppAuthBackend => ({
-  authorize: (config) =>
-    ReactNativeAppAuth.authorize({
+  authorize: (config) => {
+    const aa = lazyAppAuth();
+    return aa.authorize({
       issuer: config.issuer,
       clientId: config.clientId,
       redirectUrl: config.redirectUrl,
@@ -76,9 +157,11 @@ const buildAppAuthBackend = (): AppAuthBackend => ({
         : {}),
       usePKCE: true,
       dangerouslyAllowInsecureHttpRequests: false,
-    }) as ReturnType<AppAuthBackend['authorize']>,
-  refresh: (config, params) =>
-    ReactNativeAppAuth.refresh(
+    }) as ReturnType<AppAuthBackend['authorize']>;
+  },
+  refresh: (config, params) => {
+    const aa = lazyAppAuth();
+    return aa.refresh(
       {
         issuer: config.issuer,
         clientId: config.clientId,
@@ -86,20 +169,24 @@ const buildAppAuthBackend = (): AppAuthBackend => ({
         scopes: [...config.scopes],
       },
       { refreshToken: params.refreshToken },
-    ) as ReturnType<AppAuthBackend['refresh']>,
+    ) as ReturnType<AppAuthBackend['refresh']>;
+  },
 });
 
 /**
  * Adapt expo-contacts to the abstract ContactsBackend.
+ * Lazy-loaded — first call triggers the require + native bridge init.
  */
 const buildContactsBackend = (): ContactsBackend => ({
   requestPermission: async () => {
-    const { status } = await ExpoContacts.requestPermissionsAsync();
+    const ec = lazyContacts();
+    const { status } = await ec.requestPermissionsAsync();
     return { granted: status === 'granted' };
   },
   getContacts: async () => {
-    const { data } = await ExpoContacts.getContactsAsync({
-      fields: [ExpoContacts.Fields.Name, ExpoContacts.Fields.PhoneNumbers],
+    const ec = lazyContacts();
+    const { data } = await ec.getContactsAsync({
+      fields: [ec.Fields.Name, ec.Fields.PhoneNumbers],
     });
     return data.map<NativeContact>((c) => ({
       id: c.id ?? '',
