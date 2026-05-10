@@ -30,6 +30,7 @@ import * as gcal from '../tools/googleCalendar';
 import * as contacts from '../tools/contacts';
 import * as drive from '../tools/drive';
 import * as memory from '../tools/memory';
+import * as whatsapp from '../tools/whatsapp';
 
 interface ToolEntryBase<P, R> {
   readonly name: string;
@@ -58,6 +59,7 @@ type ListMemoriesEntry = ToolEntryBase<
   Record<string, never>,
   { entries: readonly { key: string; value: string; category: string }[] }
 >;
+type WhatsAppSendEntry = ToolEntryBase<whatsapp.WhatsAppSendParams, whatsapp.WhatsAppSendResult>;
 
 export type AnyToolEntry =
   | GmailReadEntry
@@ -71,7 +73,8 @@ export type AnyToolEntry =
   | DriveReadEntry
   | RememberFactEntry
   | RecallFactEntry
-  | ListMemoriesEntry;
+  | ListMemoriesEntry
+  | WhatsAppSendEntry;
 
 const GMAIL_READ: GmailReadEntry = {
   name: 'gmail_read_recent',
@@ -371,6 +374,40 @@ const LIST_MEMORIES: ListMemoriesEntry = {
   },
 };
 
+const WHATSAPP_SEND: WhatsAppSendEntry = {
+  name: 'whatsapp_send_message',
+  isDestructive: true,
+  parseParams: whatsapp.parseWhatsAppSendParams,
+  execute: whatsapp.whatsAppSendMessage,
+  summarize: whatsapp.summarizeWhatsAppSend,
+  definition: {
+    type: 'function',
+    function: {
+      name: 'whatsapp_send_message',
+      description:
+        'Sends a WhatsApp message via the user\'s installed WhatsApp app. ' +
+        'Always confirm with the user first. If the user mentions a person by ' +
+        'name, call system_contacts_search FIRST to resolve the phone number.',
+      parameters: {
+        type: 'object',
+        properties: {
+          phoneNumber: {
+            type: 'string',
+            description:
+              'Recipient phone number in E.164 format (e.g. +919876543210). ' +
+              'Common separators are tolerated and normalised.',
+          },
+          message: {
+            type: 'string',
+            description: 'Exact text body of the message. Max 4096 characters.',
+          },
+        },
+        required: ['phoneNumber', 'message'],
+      },
+    },
+  },
+};
+
 const ALL_ENTRIES: readonly AnyToolEntry[] = Object.freeze([
   GMAIL_READ,
   GMAIL_SEND,
@@ -384,6 +421,7 @@ const ALL_ENTRIES: readonly AnyToolEntry[] = Object.freeze([
   REMEMBER_FACT,
   RECALL_FACT,
   LIST_MEMORIES,
+  WHATSAPP_SEND,
 ]);
 
 /** Return all tool definitions ready for the OpenAI request body. */

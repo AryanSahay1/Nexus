@@ -17,4 +17,15 @@ module.exports = {
     ],
     'no-console': ['warn', { allow: ['warn', 'error'] }],
   },
+  overrides: [
+    {
+      // jest.mock() factories must be hoisted before the imports they
+      // shadow (Babel hoists them automatically), so `import/first` is
+      // noise inside test files.
+      files: ['__tests__/**/*.ts', '__tests__/**/*.tsx', 'e2e/**/*.ts'],
+      rules: {
+        'import/first': 'off',
+      },
+    },
+  ],
 };

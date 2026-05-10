@@ -19,6 +19,7 @@ import { useStore } from 'zustand';
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
+import { StatusPill } from '../../src/components/shared/StatusPill';
 import { ServiceCard } from '../../src/components/vault/ServiceCard';
 import { validateApiKey } from '../../src/services/openaiService';
 import { getAuthStore } from '../../src/store/authStore';
@@ -51,20 +52,28 @@ const VaultScreenInner: React.FC = () => {
   const [keyError, setKeyError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState(false);
 
+  // Read once per render so the missing-env state stays in sync with any
+  // hot reload during dev. Empty string ⇒ env var not set ⇒ ServiceCard
+  // shows a yellow setup pill instead of the OAuth button.
+  const googleClientId = readEnvClientId();
+  const googleAvailable = googleClientId.length > 0;
+
   const handleConnectGoogle = useCallback(async () => {
-    const clientId = readEnvClientId();
-    if (clientId.length === 0) {
+    if (!googleAvailable) {
+      // Defence in depth — the ServiceCard already hides the button, but
+      // if anything else triggers the path we surface a hint instead of
+      // crashing inside the OAuth flow.
       Alert.alert(
         'Google not configured',
         'Set EXPO_PUBLIC_GOOGLE_CLIENT_ID in your .env file. See docs/GOOGLE_SETUP.md for the step-by-step setup.',
       );
       return;
     }
-    const r = await getAuthStore().getState().connectGoogle(clientId);
+    const r = await getAuthStore().getState().connectGoogle(googleClientId);
     if (!r.ok) {
       Alert.alert('Connect failed', r.error.message);
     }
-  }, []);
+  }, [googleAvailable, googleClientId]);
 
   const handleDisconnectGoogle = useCallback(() => {
     Alert.alert(
@@ -139,6 +148,9 @@ const VaultScreenInner: React.FC = () => {
         onConnect={() => void handleConnectGoogle()}
         onDisconnect={handleDisconnectGoogle}
         disabled={connecting || disconnecting}
+        {...(googleAvailable
+          ? {}
+          : { unavailableReason: 'Set EXPO_PUBLIC_GOOGLE_CLIENT_ID to enable' })}
       />
 
       <ServiceCard
@@ -189,6 +201,16 @@ const VaultScreenInner: React.FC = () => {
           </Text>
         </ClawPanel>
       )}
+
+      <ClawPanel style={styles.whatsappPanel} testID="vault-whatsapp-panel">
+        <View style={styles.whatsappHeader}>
+          <Text style={styles.whatsappTitle}>WhatsApp</Text>
+          <StatusPill label="Ready" tone="success" testID="vault-whatsapp-status" />
+        </View>
+        <Text style={styles.whatsappBody}>
+          WhatsApp sends via your installed WhatsApp app. No login required.
+        </Text>
+      </ClawPanel>
 
       <ClawPanel style={styles.summaryPanel}>
         <Text style={styles.summaryTitle}>AI provider</Text>
@@ -274,6 +296,26 @@ const styles = StyleSheet.create({
   },
   summaryPanel: {
     marginTop: THEME.spacing.md,
+  },
+  whatsappPanel: {
+    marginTop: THEME.spacing.md,
+  },
+  whatsappHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  whatsappTitle: {
+    fontFamily: THEME.fonts.bodySemibold,
+    fontSize: THEME.fontSizes.md,
+    color: THEME.colors.text.primary,
+  },
+  whatsappBody: {
+    marginTop: THEME.spacing.sm,
+    fontFamily: THEME.fonts.body,
+    fontSize: THEME.fontSizes.sm,
+    color: THEME.colors.text.secondary,
+    lineHeight: THEME.fontSizes.sm * THEME.lineHeights.body,
   },
   summaryTitle: {
     fontFamily: THEME.fonts.bodySemibold,
