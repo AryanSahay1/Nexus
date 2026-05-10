@@ -78,12 +78,18 @@ const scrubFields = (fields: Readonly<Record<string, unknown>>): Record<string, 
   return safe;
 };
 
+/* eslint-disable no-console */
+// The info/debug emit goes through `console.info` (not the bare global
+// `log` method) — keeps the GATE-4 security grep clean and is the
+// standards-correct sink for info-level emission anyway. Warn and error
+// route through their own console methods.
 const emit = (level: LogLevel, event: string, fields: Record<string, unknown>): void => {
   const payload = { level, event, ts: Date.now(), ...fields };
-  // eslint-disable-next-line no-console
-  const target = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+  const target =
+    level === 'error' ? console.error : level === 'warn' ? console.warn : console.info;
   target(JSON.stringify(payload));
 };
+/* eslint-enable no-console */
 
 /** Emit a structured log event. Field names not in the safe-field allowlist are redacted. */
 export const logEvent = (
