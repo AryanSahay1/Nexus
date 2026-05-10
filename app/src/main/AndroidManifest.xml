@@ -9,10 +9,36 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!--
+      The <queries> block is required on Android 11+ for `resolveActivity` to
+      see other apps. Nexus needs to know whether Gmail / Calendar / Contacts
+      / Phone / Camera are installed, so the Assistive Mode tutorials can
+      offer the "Open …" deep-link button.
+    -->
     <queries>
         <intent>
             <action android:name="android.support.customtabs.action.CustomTabsService" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.INSERT" />
+            <data android:mimeType="vnd.android.cursor.dir/event" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="vnd.android.cursor.dir/contact" />
+        </intent>
+        <package android:name="com.google.android.gm" />
+        <package android:name="com.google.android.calendar" />
+        <package android:name="com.whatsapp" />
     </queries>
 
     <application
@@ -31,6 +57,21 @@
         <meta-data
             android:name="android.max_aspect"
             android:value="2.4" />
+
+        <!--
+          Place 1 of 4 — assistive-purpose declaration (see GOOGLE_COMPLIANCE.md).
+          Nexus is an accessibility tool that teaches first-time smartphone users
+          to operate the apps already on their phone (Gmail, Calendar, Contacts,
+          Camera). When an OAuth scope is granted by the user, Nexus only acts
+          on that user's behalf, with explicit per-action confirmation, and
+          tokens never leave the device.
+        -->
+        <meta-data
+            android:name="com.nexus.app.PURPOSE"
+            android:value="assistive_technology_for_first_time_smartphone_users" />
+        <meta-data
+            android:name="com.nexus.app.SENSITIVE_SCOPES_USAGE"
+            android:value="user_owned_data_only_with_explicit_per_action_confirmation" />
 
         <activity
             android:name=".MainActivity"

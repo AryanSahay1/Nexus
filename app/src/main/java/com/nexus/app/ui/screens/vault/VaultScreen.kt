@@ -92,9 +92,13 @@ private fun OpenAiCard(state: VaultUiState, vm: VaultViewModel) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = if (state.openAiConnected)
-                    "${stringResource(R.string.vault_connected)} • ${state.openAiKeyMasked ?: "—"}"
-                else stringResource(R.string.vault_disconnected),
+                text = when {
+                    state.openAiConnected ->
+                        "${stringResource(R.string.vault_connected)} • ${state.openAiKeyMasked ?: "—"}"
+                    state.isAssistiveOnly ->
+                        "Assistive Mode — Learn tab works, AI Chat needs a key"
+                    else -> stringResource(R.string.vault_disconnected)
+                },
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(12.dp))

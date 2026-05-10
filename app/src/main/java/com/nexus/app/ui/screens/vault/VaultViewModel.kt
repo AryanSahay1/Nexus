@@ -10,6 +10,7 @@ import com.nexus.app.data.secure.AuthStateBus
 import com.nexus.app.data.secure.Provider
 import com.nexus.app.data.secure.TokenStore
 import com.nexus.app.data.secure.TokenType
+import com.nexus.app.domain.auth.ASSISTIVE_ONLY_MARKER
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +24,7 @@ import kotlinx.coroutines.withContext
 data class VaultUiState(
     val openAiConnected: Boolean = false,
     val openAiKeyMasked: String? = null,
+    val isAssistiveOnly: Boolean = false,
     val googleConnected: Boolean = false,
     val googleEmail: String? = null,
     val googleClientId: String = "",
@@ -52,10 +54,12 @@ class VaultViewModel @Inject constructor(
                     googleClientId = tokenStore.get(Provider.Google, TokenType.ClientId).getOrNull()
                 )
             }
+            val isAssistiveOnly = openAiKey == ASSISTIVE_ONLY_MARKER
             _uiState.update {
                 it.copy(
-                    openAiConnected = !openAiKey.isNullOrBlank(),
-                    openAiKeyMasked = openAiKey?.let(::maskKey),
+                    openAiConnected = !openAiKey.isNullOrBlank() && !isAssistiveOnly,
+                    openAiKeyMasked = if (isAssistiveOnly) null else openAiKey?.let(::maskKey),
+                    isAssistiveOnly = isAssistiveOnly,
                     googleConnected = !googleAccess.isNullOrBlank(),
                     googleEmail = googleEmail,
                     googleClientId = savedClientId.orEmpty()

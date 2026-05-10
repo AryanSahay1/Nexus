@@ -5,6 +5,7 @@ object NexusDestinations {
     const val TABS = "tabs"
 
     object Tabs {
+        const val LEARN = "learn"
         const val CHAT = "chat"
         const val VAULT = "vault"
         const val MEMORY = "memory"

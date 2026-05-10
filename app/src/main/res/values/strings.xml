@@ -10,6 +10,8 @@
     <string name="api_key_subtitle">Paste your OpenAI API key. Stored only on this device, encrypted by the Android Keystore.</string>
     <string name="api_key_hint">sk-…</string>
     <string name="api_key_save">Save key</string>
+    <string name="onboarding_skip">Continue without a key</string>
+    <string name="onboarding_skip_explainer">The Learn tab still works — it teaches Gmail, Calendar and Contacts without sending anything to the cloud.</string>
 
     <!-- Vault -->
     <string name="vault_title">Vault</string>
@@ -47,7 +49,13 @@
     <string name="common_yes">Yes</string>
     <string name="common_no">No</string>
 
+    <!-- Assistive disclosure (LAW: declared in 4 places — see GOOGLE_COMPLIANCE.md) -->
+    <string name="assistive_disclosure_title">Built as an assistive helper</string>
+    <string name="assistive_disclosure_body">Nexus is an accessibility tool: it teaches everyday tasks to people who are new to smartphones — older adults, first-time users, and anyone who wants step-by-step guidance.\n\nWhen you connect Gmail or Google Calendar, Nexus only acts on your behalf, with your explicit confirmation. Tokens stay on this phone, encrypted by the Android Keystore, and Nexus never sends your messages or contacts to anyone else.</string>
+    <string name="assistive_disclosure_continue">I understand</string>
+
     <!-- Tabs -->
+    <string name="tab_learn">Learn</string>
     <string name="tab_chat">Chat</string>
     <string name="tab_vault">Vault</string>
     <string name="tab_memory">Memory</string>

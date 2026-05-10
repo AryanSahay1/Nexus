@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +28,7 @@ import androidx.navigation.compose.rememberNavController
 import com.nexus.app.R
 import com.nexus.app.ui.navigation.NexusDestinations
 import com.nexus.app.ui.screens.chat.ChatScreen
+import com.nexus.app.ui.screens.learn.LearnScreen
 import com.nexus.app.ui.screens.memory.MemoryScreen
 import com.nexus.app.ui.screens.settings.SettingsScreen
 import com.nexus.app.ui.screens.vault.VaultScreen
@@ -38,6 +40,7 @@ private data class TabItem(
 )
 
 private val tabs = listOf(
+    TabItem(NexusDestinations.Tabs.LEARN, R.string.tab_learn, Icons.Outlined.School),
     TabItem(NexusDestinations.Tabs.CHAT, R.string.tab_chat, Icons.AutoMirrored.Outlined.Chat),
     TabItem(NexusDestinations.Tabs.VAULT, R.string.tab_vault, Icons.Outlined.Lock),
     TabItem(NexusDestinations.Tabs.MEMORY, R.string.tab_memory, Icons.Outlined.Memory),
@@ -84,9 +87,10 @@ fun TabsRoot() {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = NexusDestinations.Tabs.CHAT,
+            startDestination = NexusDestinations.Tabs.LEARN,
             modifier = Modifier.padding(padding)
         ) {
+            composable(NexusDestinations.Tabs.LEARN) { LearnScreen() }
             composable(NexusDestinations.Tabs.CHAT) { ChatScreen() }
             composable(NexusDestinations.Tabs.VAULT) { VaultScreen() }
             composable(NexusDestinations.Tabs.MEMORY) { MemoryScreen() }

@@ -6,6 +6,7 @@ import com.nexus.app.core.NexusResult
 import com.nexus.app.data.secure.Provider
 import com.nexus.app.data.secure.TokenStore
 import com.nexus.app.data.secure.TokenType
+import com.nexus.app.domain.auth.ASSISTIVE_ONLY_MARKER
 import javax.inject.Inject
 import javax.inject.Singleton
 import retrofit2.HttpException
@@ -26,11 +27,12 @@ class OpenAiService @Inject constructor(
         request: ChatCompletionRequest
     ): NexusResult<ChatCompletionResponse> {
         val key = tokenStore.get(Provider.OpenAI, TokenType.ApiKey).getOrNull()
-        if (key.isNullOrBlank()) {
+        if (key.isNullOrBlank() || key == ASSISTIVE_ONLY_MARKER) {
             return NexusResult.err(
                 NexusError(
                     code = NexusErrorCode.UNAUTHORIZED,
-                    message = "OpenAI API key is not configured. Add it under Vault > OpenAI."
+                    message = "Add your OpenAI key under Vault → OpenAI to chat with the AI assistant. " +
+                        "The Learn tab works without a key."
                 )
             )
         }
