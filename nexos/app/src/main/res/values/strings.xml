@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NexOS</string>
+    <string name="app_tagline">AI-orchestrated capture &amp; notes</string>
+
+    <!-- Notifications -->
+    <string name="notif_service_title">NexOS is ready</string>
+    <string name="notif_service_text">Tap the floating button to capture.</string>
+    <string name="notif_capture_title">Screen capture in progress</string>
+    <string name="notif_capture_text">Reading the visible screen with on-device OCR.</string>
+    <string name="notif_saved_title">Note saved</string>
+    <string name="notif_saved_text">Open NexOS to review.</string>
+
+    <!-- Workflow -->
+    <string name="workflow_idle">Idle</string>
+    <string name="workflow_capturing">Capturing</string>
+    <string name="workflow_extracting">Reading text</string>
+    <string name="workflow_ai">Asking the AI</string>
+    <string name="workflow_saving">Saving</string>
+    <string name="workflow_done">Done</string>
+    <string name="workflow_failed">Failed</string>
+
+    <!-- Screens -->
+    <string name="screen_notes">Notes</string>
+    <string name="screen_settings">Settings</string>
+    <string name="screen_voice">Voice note</string>
+
+    <!-- Notes -->
+    <string name="search_notes_hint">Search your notes…</string>
+    <string name="empty_notes_title">No notes yet</string>
+    <string name="empty_notes_body">Tap the floating button to capture a screenshot, or hold to record a voice note.</string>
+
+    <!-- Settings -->
+    <string name="settings_ai_provider">AI Provider</string>
+    <string name="settings_ai_provider_summary">Choose how notes are summarized.</string>
+    <string name="settings_api_key">API Key</string>
+    <string name="settings_api_key_hint">Paste your provider key (kept on device, encrypted).</string>
+    <string name="settings_test_key">Test connection</string>
+    <string name="settings_floating_button">Show floating button</string>
+    <string name="settings_floating_button_side">Floating button side</string>
+    <string name="settings_auto_summarize">Auto-summarize with AI</string>
+    <string name="settings_auto_save">Auto-save notes</string>
+    <string name="settings_permissions">Permissions</string>
+    <string name="settings_about">About NexOS</string>
+
+    <!-- Onboarding / permissions -->
+    <string name="perm_overlay">Display over other apps</string>
+    <string name="perm_overlay_body">Required to show the floating capture button on top of any screen.</string>
+    <string name="perm_audio">Microphone</string>
+    <string name="perm_audio_body">Used only when you tap the voice-note button.</string>
+    <string name="perm_notifications">Notifications</string>
+    <string name="perm_notifications_body">Used to confirm capture progress and saved notes.</string>
+    <string name="perm_battery">Disable battery optimization</string>
+    <string name="perm_battery_body">Keeps the floating button alive in the background on aggressive OEMs.</string>
+    <string name="action_grant">Grant</string>
+    <string name="action_continue">Continue</string>
+    <string name="action_skip">Skip</string>
+
+    <!-- Generic -->
+    <string name="action_save">Save</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_share">Share</string>
+    <string name="action_back">Back</string>
+    <string name="action_done">Done</string>
+    <string name="action_retry">Retry</string>
+
+    <!-- AI providers -->
+    <string name="provider_none">None — local rule-based</string>
+    <string name="provider_openai">OpenAI (gpt-4o-mini)</string>
+    <string name="provider_gemini">Google Gemini (1.5 Flash)</string>
+    <string name="provider_anthropic">Anthropic (claude-haiku)</string>
+    <string name="provider_groq">Groq (llama3-8b)</string>
+</resources>
