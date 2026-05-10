@@ -38,12 +38,13 @@ jest.mock('expo-secure-store', () => {
   };
 });
 
-jest.mock('expo-sqlite', () => ({
+jest.mock('expo-sqlite/next', () => ({
   __esModule: true,
   openDatabaseAsync: async () => {
     throw new Error('stores tests inject db directly');
   },
 }));
+jest.mock('expo-sqlite', () => ({ __esModule: true }));
 
 const SecureStore = SecureStoreReal as unknown as typeof SecureStoreReal & {
   __reset: () => void;

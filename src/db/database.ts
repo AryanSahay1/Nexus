@@ -15,7 +15,13 @@
  * and re-runs migrations only if user_version is behind.
  */
 
-import * as SQLite from 'expo-sqlite';
+// IMPORTANT: SDK 50's default `expo-sqlite` export is the legacy WebSQL API
+// (`openDatabase(name, version, ...)` returning a SQLiteDatabase with
+// `transaction()`). The modern async surface — `openDatabaseAsync` plus
+// `getFirstAsync` / `getAllAsync` / `runAsync` / `execAsync` directly on
+// the database — lives at `expo-sqlite/next` until SDK 51 promotes it to
+// the default. This file uses the next surface exclusively.
+import * as SQLite from 'expo-sqlite/next';
 
 import { NexusError, type Result, err, ok } from '../types/auth';
 import { logError, logEvent } from '../utils/logger';
@@ -77,17 +83,16 @@ export interface NexusDatabase {
 let cachedDb: NexusDatabase | null = null;
 
 const openDatabase = async (): Promise<NexusDatabase> => {
-  const moduleAny = SQLite as unknown as {
+  const surface = SQLite as unknown as {
     openDatabaseAsync?: (name: string) => Promise<NexusDatabase>;
-    openDatabaseSync?: (name: string) => NexusDatabase;
   };
-  if (typeof moduleAny.openDatabaseAsync === 'function') {
-    return moduleAny.openDatabaseAsync(DB_NAME);
+  if (typeof surface.openDatabaseAsync !== 'function') {
+    throw new NexusError(
+      'UNKNOWN',
+      "expo-sqlite/next.openDatabaseAsync is not a function — wrong import or unsupported SDK.",
+    );
   }
-  if (typeof moduleAny.openDatabaseSync === 'function') {
-    return moduleAny.openDatabaseSync(DB_NAME);
-  }
-  throw new NexusError('UNKNOWN', 'expo-sqlite did not expose a database opener.');
+  return surface.openDatabaseAsync(DB_NAME);
 };
 
 const readUserVersion = async (db: NexusDatabase): Promise<number> => {

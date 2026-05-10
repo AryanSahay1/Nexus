@@ -20,7 +20,8 @@ jest.mock('expo-secure-store', () => {
     __store: store,
   };
 });
-jest.mock('expo-sqlite', () => ({ __esModule: true, openDatabaseAsync: async () => null }));
+jest.mock('expo-sqlite/next', () => ({ __esModule: true, openDatabaseAsync: async () => null }));
+jest.mock('expo-sqlite', () => ({ __esModule: true }));
 
 // eslint-disable-next-line import/first
 import { __resetForTests as resetDb, __setDatabaseForTests, type NexusDatabase } from '../../src/db/database';

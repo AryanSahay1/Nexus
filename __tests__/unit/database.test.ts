@@ -63,7 +63,12 @@ let lastDb: FakeDb | null = null;
 let throwOnOpen = false;
 let openCount = 0;
 
-jest.mock('expo-sqlite', () => ({
+// IMPORTANT: this matches the production import path `expo-sqlite/next`
+// and NOT the legacy `expo-sqlite`. The original mock targeted the wrong
+// module path and silently masked the SDK 50 boot-failure bug fixed in
+// this commit. Keeping both paths mocked is defensive in case future
+// code drifts back to either import.
+jest.mock('expo-sqlite/next', () => ({
   __esModule: true,
   openDatabaseAsync: async (_name: string) => {
     openCount += 1;
@@ -72,6 +77,7 @@ jest.mock('expo-sqlite', () => ({
     return lastDb;
   },
 }));
+jest.mock('expo-sqlite', () => ({ __esModule: true }));
 
 // eslint-disable-next-line import/first
 import {
