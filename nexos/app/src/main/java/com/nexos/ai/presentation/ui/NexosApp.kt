@@ -45,28 +45,28 @@ fun NexosApp(
             startDestination = Routes.NOTE_LIST,
             enterTransition = {
                 fadeIn(tween(NexosMotion.Slow, easing = NexosMotion.EaseEnter)) +
-                    androidx.compose.animation.slideIntoContainer(
+                    slideIntoContainer(
                         AnimatedContentTransitionScope.SlideDirection.Left,
                         tween(NexosMotion.Slow, easing = NexosMotion.EaseEnter),
                     )
             },
             exitTransition = {
                 fadeOut(tween(NexosMotion.Normal)) +
-                    androidx.compose.animation.slideOutOfContainer(
+                    slideOutOfContainer(
                         AnimatedContentTransitionScope.SlideDirection.Left,
                         tween(NexosMotion.Normal),
                     )
             },
             popEnterTransition = {
                 fadeIn(tween(NexosMotion.Slow)) +
-                    androidx.compose.animation.slideIntoContainer(
+                    slideIntoContainer(
                         AnimatedContentTransitionScope.SlideDirection.Right,
                         tween(NexosMotion.Slow, easing = NexosMotion.EaseEnter),
                     )
             },
             popExitTransition = {
                 fadeOut(tween(NexosMotion.Normal)) +
-                    androidx.compose.animation.slideOutOfContainer(
+                    slideOutOfContainer(
                         AnimatedContentTransitionScope.SlideDirection.Right,
                         tween(NexosMotion.Normal),
                     )

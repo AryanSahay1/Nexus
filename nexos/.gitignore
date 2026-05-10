@@ -1,0 +1,11 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+.cxx/
+.kotlin/
+
+# Keep the published APKs in dist/ committed; ignore raw build output.
+app/build/

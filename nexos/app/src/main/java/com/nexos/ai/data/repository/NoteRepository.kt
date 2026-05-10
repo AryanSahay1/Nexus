@@ -15,8 +15,9 @@ import javax.inject.Singleton
 @Singleton
 class NoteRepository @Inject constructor(
     private val noteDao: NoteDao,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+
     val allNotes: Flow<List<Note>> =
         noteDao.getAllNotes().map { list -> list.map { it.toDomain() } }
 
