@@ -1,0 +1,17 @@
+package com.nexos.ai.data.local.entity
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "notes")
+data class NoteEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val content: String,
+    val summary: String = "",
+    val sourceType: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val tags: String = "",
+    val isSynced: Boolean = false,
+    val rawImagePath: String = "",
+)

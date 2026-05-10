@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NexOS</string>
+    <string name="floating_service_channel">NexOS Floating Button</string>
+    <string name="screenshot_service_channel">NexOS Screen Capture</string>
+    <string name="floating_service_text">Tap the floating bubble to capture or talk</string>
+    <string name="screenshot_service_text">Capturing screen…</string>
+    <string name="notification_capture_done_title">Note saved</string>
+    <string name="notification_capture_done_text">%1$s</string>
+</resources>
