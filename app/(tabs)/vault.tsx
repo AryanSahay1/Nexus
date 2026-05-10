@@ -3,10 +3,9 @@
  */
 
 import Constants from 'expo-constants';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,6 +20,11 @@ import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
 import { StatusPill } from '../../src/components/shared/StatusPill';
 import { ServiceCard } from '../../src/components/vault/ServiceCard';
+import {
+  buildVaultGoogleConnectSteps,
+  buildVaultOpenAiSetupSteps,
+  useTour,
+} from '../../src/components/guide';
 import { validateApiKey } from '../../src/services/openaiService';
 import { getAuthStore } from '../../src/store/authStore';
 import { getSettingsStore } from '../../src/store/settingsStore';
@@ -51,6 +55,43 @@ const VaultScreenInner: React.FC = () => {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [keyError, setKeyError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState(false);
+
+  // ── Guided tour wiring ───────────────────────────────────────────
+  // Refs are attached to ServiceCards / inputs / buttons via the
+  // `<View ref={…}>` pattern; the tour engine measures them at start
+  // time and drives the spotlight.
+  const openAiCardRef = useRef<View>(null);
+  const openAiInputRef = useRef<View>(null);
+  const openAiSaveRef = useRef<View>(null);
+  const googleCardRef = useRef<View>(null);
+  const googleConnectRef = useRef<View>(null);
+
+  const openAiTour = useTour(
+    'vault_openai_setup',
+    buildVaultOpenAiSetupSteps({
+      card: openAiCardRef,
+      input: openAiInputRef,
+      saveButton: openAiSaveRef,
+    }),
+  );
+  const googleTour = useTour(
+    'vault_google_connect',
+    buildVaultGoogleConnectSteps({
+      card: googleCardRef,
+      connectButton: googleConnectRef,
+    }),
+  );
+
+  const openAiConnected = snapshot.openai.status === 'connected';
+  const googleConnected = snapshot.google.status === 'connected';
+
+  useEffect(() => {
+    if (!openAiConnected) {
+      void openAiTour.startTour();
+    } else if (!googleConnected) {
+      void googleTour.startTour();
+    }
+  }, [openAiConnected, googleConnected, openAiTour, googleTour]);
 
   // Read once per render so the missing-env state stays in sync with any
   // hot reload during dev. Empty string ⇒ env var not set ⇒ ServiceCard
@@ -142,46 +183,54 @@ const VaultScreenInner: React.FC = () => {
       <Text style={styles.heading}>VAULT</Text>
       <Text style={styles.subheading}>Connected accounts and credentials</Text>
 
-      <ServiceCard
-        provider="google"
-        connection={snapshot.google}
-        onConnect={() => void handleConnectGoogle()}
-        onDisconnect={handleDisconnectGoogle}
-        disabled={connecting || disconnecting}
-        {...(googleAvailable
-          ? {}
-          : { unavailableReason: 'Set EXPO_PUBLIC_GOOGLE_CLIENT_ID to enable' })}
-      />
+      <View ref={googleCardRef} collapsable={false}>
+        <ServiceCard
+          provider="google"
+          connection={snapshot.google}
+          onConnect={() => void handleConnectGoogle()}
+          onDisconnect={handleDisconnectGoogle}
+          disabled={connecting || disconnecting}
+          connectButtonRef={googleConnectRef}
+          {...(googleAvailable
+            ? {}
+            : { unavailableReason: 'Set EXPO_PUBLIC_GOOGLE_CLIENT_ID to enable' })}
+        />
+      </View>
 
-      <ServiceCard
-        provider="openai"
-        connection={snapshot.openai}
-        onConnect={() => {
-          // Just focus the field — the actual save is on the button below.
-        }}
-        onDisconnect={handleClearApiKey}
-        disabled={savingKey}
-      />
+      <View ref={openAiCardRef} collapsable={false}>
+        <ServiceCard
+          provider="openai"
+          connection={snapshot.openai}
+          onConnect={() => {
+            // Just focus the field — the actual save is on the button below.
+          }}
+          onDisconnect={handleClearApiKey}
+          disabled={savingKey}
+        />
+      </View>
 
       {snapshot.openai.status === 'disconnected' ? (
         <ClawPanel style={styles.keyPanel}>
-          <Text style={styles.keyTitle}>Paste your OpenAI API key</Text>
-          <Text style={styles.keyHint}>
-            Stored only on this device in the secure enclave. Format: sk-…
-          </Text>
-          <TextInput
-            value={apiKeyInput}
-            onChangeText={setApiKeyInput}
-            placeholder="sk-…"
-            placeholderTextColor={THEME.colors.text.muted}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={styles.keyInput}
-            accessibilityLabel="OpenAI API key"
-          />
+          <View ref={openAiInputRef} collapsable={false}>
+            <TextInput
+              value={apiKeyInput}
+              onChangeText={setApiKeyInput}
+              placeholder="sk-…"
+              placeholderTextColor={THEME.colors.text.muted}
+              secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.keyInput}
+              accessibilityLabel="OpenAI API key"
+              testID="vault-openai-input"
+            />
+          </View>
           {keyError !== null ? <Text style={styles.keyError}>{keyError}</Text> : null}
-          <View style={{ marginTop: THEME.spacing.md }}>
+          <View
+            ref={openAiSaveRef}
+            collapsable={false}
+            style={{ marginTop: THEME.spacing.md }}
+          >
             <GlowButton
               label="Save key"
               variant="primary"
@@ -189,16 +238,13 @@ const VaultScreenInner: React.FC = () => {
               loading={savingKey}
               disabled={apiKeyInput.trim().length === 0}
               onPress={() => void handleSaveApiKey()}
+              testID="vault-openai-save"
             />
           </View>
         </ClawPanel>
       ) : (
         <ClawPanel style={styles.keyPanel}>
-          <Text style={styles.keyTitle}>OpenAI API key</Text>
           <Text style={styles.keyMasked}>{maskTail('sk-' + 'x'.repeat(20))}</Text>
-          <Text style={styles.keyHint}>
-            Mask shown for security. Use Disconnect to remove.
-          </Text>
         </ClawPanel>
       )}
 
@@ -222,16 +268,7 @@ const VaultScreenInner: React.FC = () => {
           <Text style={styles.summaryLabel}>Model: </Text>
           <Text style={styles.summaryValue}>{model}</Text>
         </Text>
-        <Text style={styles.summaryHint}>
-          Adjust in Settings. See docs/GOOGLE_SETUP.md for the free Google Cloud setup.
-        </Text>
       </ClawPanel>
-
-      <Pressable style={{ paddingVertical: THEME.spacing.md, alignItems: 'center' }}>
-        <Text style={styles.footnote}>
-          Tokens are encrypted on-device and never leave this phone.
-        </Text>
-      </Pressable>
     </ScrollView>
   );
 };
