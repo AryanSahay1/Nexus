@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nexus</string>
+
+    <!-- Onboarding / Auth -->
+    <string name="onboarding_title">Welcome to Nexus</string>
+    <string name="onboarding_subtitle">Your private, on-device AI agent.\nKeys never leave your phone.</string>
+    <string name="onboarding_continue">Continue</string>
+
+    <string name="api_key_title">Connect OpenAI</string>
+    <string name="api_key_subtitle">Paste your OpenAI API key. Stored only on this device, encrypted by the Android Keystore.</string>
+    <string name="api_key_hint">sk-…</string>
+    <string name="api_key_save">Save key</string>
+    <string name="api_key_invalid">Key must start with \"sk-\" and contain no whitespace.</string>
+
+    <!-- Vault -->
+    <string name="vault_title">Vault</string>
+    <string name="vault_openai">OpenAI</string>
+    <string name="vault_google">Google</string>
+    <string name="vault_connect">Connect</string>
+    <string name="vault_disconnect">Disconnect</string>
+    <string name="vault_connected">Connected</string>
+    <string name="vault_disconnected">Disconnected</string>
+
+    <!-- Chat -->
+    <string name="chat_title">Chat</string>
+    <string name="chat_input_hint">Message Nexus…</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_thinking">Thinking…</string>
+    <string name="chat_executing">Working with %1$s…</string>
+    <string name="chat_confirm">Confirm</string>
+    <string name="chat_cancel">Cancel</string>
+    <string name="chat_clear">Clear conversation</string>
+
+    <!-- Memory -->
+    <string name="memory_title">Memory</string>
+    <string name="memory_subtitle">Preferences injected into every conversation.</string>
+    <string name="memory_add">Add preference</string>
+    <string name="memory_key">Key (e.g. email_tone)</string>
+    <string name="memory_value">Value (e.g. professional)</string>
+    <string name="memory_save">Save</string>
+    <string name="memory_empty">No preferences yet.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_model">AI model</string>
+    <string name="settings_base_url">OpenAI base URL</string>
+    <string name="settings_factory_reset">Factory reset</string>
+    <string name="settings_factory_reset_confirm">This deletes all keys, tokens, preferences, and chat history. Continue?</string>
+
+    <!-- Common -->
+    <string name="common_back">Back</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_error">Something went wrong</string>
+    <string name="common_loading">Loading…</string>
+    <string name="common_empty">Nothing here yet</string>
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+    <string name="common_ok">OK</string>
+
+    <!-- Tabs -->
+    <string name="tab_chat">Chat</string>
+    <string name="tab_vault">Vault</string>
+    <string name="tab_memory">Memory</string>
+    <string name="tab_settings">Settings</string>
+</resources>

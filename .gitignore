@@ -1,0 +1,24 @@
+*.iml
+.gradle
+local.properties
+.idea
+.DS_Store
+build
+captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.ap_
+*.dex
+.android-sdk/
+.expo/
+node_modules/
+release/
+
+# React Native prebuild folder — leftover from prior branches, not used by the
+# native Android Nexus build. The native code lives at the repo root.
+/android/
+keystore.properties
+*.keystore
+*.jks
