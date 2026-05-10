@@ -3,10 +3,9 @@
  */
 
 import Constants from 'expo-constants';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import {
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -52,6 +51,7 @@ const VaultScreenInner: React.FC = () => {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [keyError, setKeyError] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState(false);
+  const apiKeyInputRef = useRef<TextInput | null>(null);
 
   // Read once per render so the missing-env state stays in sync with any
   // hot reload during dev. Empty string ⇒ env var not set ⇒ ServiceCard
@@ -165,7 +165,10 @@ const VaultScreenInner: React.FC = () => {
           provider="openai"
           connection={snapshot.openai}
           onConnect={() => {
-            // Just focus the field — the actual save is on the button below.
+            // The "Connect" tap on the OpenAI card focuses the API-key
+            // text input below — that's the actual entry point. The
+            // real save is the green "Save key" button further down.
+            apiKeyInputRef.current?.focus();
           }}
           onDisconnect={handleClearApiKey}
           disabled={savingKey}
@@ -179,6 +182,7 @@ const VaultScreenInner: React.FC = () => {
             Stored only on this device in the secure enclave. Format: sk-…
           </Text>
           <TextInput
+            ref={apiKeyInputRef}
             value={apiKeyInput}
             onChangeText={setApiKeyInput}
             placeholder="sk-…"
@@ -240,11 +244,11 @@ const VaultScreenInner: React.FC = () => {
         </ClawPanel>
       </FadeSlideIn>
 
-      <Pressable style={{ paddingVertical: THEME.spacing.md, alignItems: 'center' }}>
+      <View style={{ paddingVertical: THEME.spacing.md, alignItems: 'center' }}>
         <Text style={styles.footnote}>
           Tokens are encrypted on-device and never leave this phone.
         </Text>
-      </Pressable>
+      </View>
     </ScrollView>
   );
 };
