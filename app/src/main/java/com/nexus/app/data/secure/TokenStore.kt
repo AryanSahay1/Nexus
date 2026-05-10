@@ -2,6 +2,7 @@ package com.nexus.app.data.secure
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.annotation.VisibleForTesting
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.nexus.app.core.NexusError
@@ -21,24 +22,11 @@ import javax.inject.Singleton
  * token strings, never raw OAuth-response JSON blobs.
  */
 @Singleton
-class TokenStore @Inject constructor(
-    @ApplicationContext private val context: Context
+class TokenStore @VisibleForTesting internal constructor(
+    private val prefs: SharedPreferences
 ) {
 
-    private val prefs: SharedPreferences by lazy { open() }
-
-    private fun open(): SharedPreferences {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        return EncryptedSharedPreferences.create(
-            context,
-            FILE_NAME,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
+    @Inject constructor(@ApplicationContext context: Context) : this(open(context))
 
     fun get(provider: Provider, type: TokenType): NexusResult<String?> =
         runCatchingNexus(NexusErrorCode.SECURE_STORE_ERROR) { prefs.getString(key(provider, type), null) }
@@ -116,6 +104,19 @@ class TokenStore @Inject constructor(
 
     companion object {
         private const val FILE_NAME = "nexus_secure_v1"
+
+        private fun open(context: Context): SharedPreferences {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            return EncryptedSharedPreferences.create(
+                context,
+                FILE_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        }
     }
 }
 

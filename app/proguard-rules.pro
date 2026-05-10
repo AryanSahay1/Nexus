@@ -36,3 +36,10 @@
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
 -dontwarn androidx.room.paging.**
+
+# Tink (used by androidx.security.crypto) references errorprone annotations
+# that are not present at runtime. Strip the warnings; the annotations have
+# no runtime effect.
+-dontwarn com.google.errorprone.annotations.**
+-dontwarn com.google.api.client.**
+-dontwarn javax.lang.model.element.Modifier

@@ -38,6 +38,17 @@ android {
                 storePassword = keystoreProps.getProperty("storePassword")
                 keyAlias = keystoreProps.getProperty("keyAlias")
                 keyPassword = keystoreProps.getProperty("keyPassword")
+            } else {
+                // Fallback so unsigned-CI builds and `assembleRelease` succeed on a
+                // fresh checkout. Sideload-quality signing only — replace with a
+                // proper Play Store key before publishing.
+                val debugStore = file("${System.getProperty("user.home")}/.android/debug.keystore")
+                if (debugStore.exists()) {
+                    storeFile = debugStore
+                    storePassword = "android"
+                    keyAlias = "androiddebugkey"
+                    keyPassword = "android"
+                }
             }
         }
     }
@@ -56,9 +67,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (keystoreProps.isNotEmpty()) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
