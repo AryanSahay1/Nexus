@@ -1,10 +1,6 @@
 package com.nexus.app.ui.screens.memory
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -40,6 +36,7 @@ import com.nexus.app.R
 import com.nexus.app.ui.components.EmptyState
 import com.nexus.app.ui.components.leather.LeatherButton
 import com.nexus.app.ui.components.leather.LeatherCard
+import com.nexus.app.ui.components.leather.StaggeredEntry
 import com.nexus.app.ui.theme.leather.LeatherMotion
 import com.nexus.app.ui.theme.leather.LeatherPalette
 
@@ -120,19 +117,11 @@ fun MemoryScreen(viewModel: MemoryViewModel = hiltViewModel()) {
                 )
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(items = items, key = { it.key }) { pref ->
-                        AnimatedVisibility(
-                            visible = true,
-                            enter = fadeIn(LeatherMotion.tweenLeather(LeatherMotion.Normal)) +
-                                slideInVertically(
-                                    initialOffsetY = { it / 4 },
-                                    animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Normal)
-                                ),
-                            exit = fadeOut(LeatherMotion.tweenLeather(LeatherMotion.Fast)) +
-                                slideOutVertically(
-                                    animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Fast)
-                                )
-                        ) {
+                    itemsIndexed(items = items, key = { _, it -> it.key }) { index, pref ->
+                        // Staggered fade-up entrance — each row offset by 60 ms,
+                        // capped so a long list still finishes its enter
+                        // choreography quickly. UI/UX skill §9.
+                        StaggeredEntry(index = index) {
                             LeatherCard(
                                 modifier = Modifier.fillMaxWidth(),
                                 elevationLevel = 1,

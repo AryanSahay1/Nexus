@@ -44,7 +44,9 @@ import com.nexus.app.ui.components.leather.LeatherButton
 import com.nexus.app.ui.components.leather.LeatherCard
 import com.nexus.app.ui.components.leather.LeatherCardVariant
 import com.nexus.app.ui.components.leather.OutlineLeatherButton
+import com.nexus.app.ui.components.leather.StaggeredEntry
 import com.nexus.app.ui.components.leather.StitchedCheck
+import com.nexus.app.ui.components.leather.pulseGlow
 import com.nexus.app.ui.theme.leather.LeatherMotion
 import com.nexus.app.ui.theme.leather.LeatherPalette
 
@@ -78,9 +80,14 @@ fun VaultScreen(viewModel: VaultViewModel = hiltViewModel()) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            OpenAiCard(state, viewModel)
-            GoogleCard(state, viewModel) { intent ->
-                if (intent != null) launcher.launch(intent)
+            // Staggered fade-up so the OpenAI pouch lands before the
+            // Google pouch — the eye reads them as a sequence rather
+            // than a wall of cards (UI/UX skill §9, §13).
+            StaggeredEntry(index = 0) { OpenAiCard(state, viewModel) }
+            StaggeredEntry(index = 1) {
+                GoogleCard(state, viewModel) { intent ->
+                    if (intent != null) launcher.launch(intent)
+                }
             }
             AnimatedVisibility(
                 visible = state.errorMessage != null,
@@ -201,8 +208,23 @@ private fun GoogleCard(
     val variant = if (state.googleConnected) LeatherCardVariant.Highlight
     else LeatherCardVariant.Standard
 
+    // When the user hasn't connected Google yet, paint a soft breathing
+    // glow around the pouch — quiet attention cue per skill §12.
+    // Once connected, the glow disappears.
+    val attentionModifier = if (!state.googleConnected) {
+        Modifier
+            .fillMaxWidth()
+            .pulseGlow(
+                color = LeatherPalette.ThreadFresh,
+                cornerRadius = 20.dp,
+                strokeWidth = 1.dp
+            )
+    } else {
+        Modifier.fillMaxWidth()
+    }
+
     LeatherCard(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = attentionModifier,
         variant = variant,
         elevationLevel = 2,
         grainSeed = 22
