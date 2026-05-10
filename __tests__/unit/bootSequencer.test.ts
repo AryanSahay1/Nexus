@@ -141,7 +141,9 @@ describe('runBootSequence', () => {
 
   it('logging hygiene: step IDs are snake_case and never carry PII', async () => {
     const messages: string[] = [];
-    const log = jest.spyOn(console, 'log').mockImplementation((m: unknown) => {
+    // Info logs route through console.info after the GATE-4 logger
+    // cleanup; warn / error keep their own console methods.
+    const info = jest.spyOn(console, 'info').mockImplementation((m: unknown) => {
       messages.push(String(m));
     });
     const errSpy = jest.spyOn(console, 'error').mockImplementation((m: unknown) => {
@@ -160,7 +162,7 @@ describe('runBootSequence', () => {
       expect(joined).not.toMatch(/sk-[A-Za-z0-9]/);
       expect(joined).not.toMatch(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
     } finally {
-      log.mockRestore();
+      info.mockRestore();
       errSpy.mockRestore();
     }
   });
