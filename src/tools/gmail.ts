@@ -17,6 +17,7 @@ import {
   type GmailSendEmailParams,
   type GmailSendEmailResult,
 } from '../types/tools';
+import { type EmailDetail } from '../types/google';
 import { NexusError, type Result, err, ok } from '../types/auth';
 
 /** Validate the raw argument record from the LLM into typed params. */
@@ -71,6 +72,59 @@ export const parseGmailSendEmailParams = (
 export const gmailSendEmail = async (
   params: GmailSendEmailParams,
 ): Promise<Result<GmailSendEmailResult, NexusError>> => googleService.sendGmailMessage(params);
+
+// ── gmail_search ---------------------------------------------------------
+
+export interface GmailSearchParams {
+  readonly query: string;
+  readonly limit: number;
+}
+
+export const parseGmailSearchParams = (
+  raw: Readonly<Record<string, unknown>>,
+): Result<GmailSearchParams, NexusError> => {
+  const query = raw['query'];
+  const limitRaw = raw['limit'];
+  if (typeof query !== 'string' || query.trim().length === 0) {
+    return err(new NexusError('INVALID_INPUT', 'gmail_search: query is required.'));
+  }
+  let limit = 5;
+  if (limitRaw !== undefined) {
+    if (typeof limitRaw !== 'number' || !Number.isFinite(limitRaw)) {
+      return err(new NexusError('INVALID_INPUT', 'gmail_search: limit must be a number.'));
+    }
+    limit = Math.floor(limitRaw);
+  }
+  return ok({ query: query.trim(), limit });
+};
+
+export const gmailSearch = async (
+  params: GmailSearchParams,
+): Promise<Result<GmailReadRecentResult, NexusError>> => {
+  const result = await googleService.searchGmailMessages(params.query, params.limit);
+  if (!result.ok) return err(result.error);
+  return ok({ messages: result.value });
+};
+
+// ── gmail_read_email -----------------------------------------------------
+
+export interface GmailReadEmailParams {
+  readonly id: string;
+}
+
+export const parseGmailReadEmailParams = (
+  raw: Readonly<Record<string, unknown>>,
+): Result<GmailReadEmailParams, NexusError> => {
+  const id = raw['id'];
+  if (typeof id !== 'string' || id.trim().length === 0) {
+    return err(new NexusError('INVALID_INPUT', 'gmail_read_email: id is required.'));
+  }
+  return ok({ id: id.trim() });
+};
+
+export const gmailReadEmail = async (
+  params: GmailReadEmailParams,
+): Promise<Result<EmailDetail, NexusError>> => googleService.getGmailMessage(params.id);
 
 /** Human-readable summary for the ConfirmationCard before sending. */
 export const summarizeSendEmail = (params: GmailSendEmailParams): string => {
