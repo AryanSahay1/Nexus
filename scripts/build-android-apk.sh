@@ -80,4 +80,24 @@ DEST="release/nexus-$VERSION-android-$VARIANT.apk"
 cp -v "$SRC" "$DEST"
 sha256sum "$DEST" | tee "$DEST.sha256"
 
+# Sanity check: a release APK MUST contain assets/index.android.bundle.
+# Sideloading a release-named APK that lacks the JS bundle would produce
+# the "Unable to load script" red screen on Android — fail loudly here
+# instead of silently shipping a broken artifact.
+#
+# We query unzip directly for the entry rather than piping into grep,
+# because `set -o pipefail` + `grep -q` causes unzip to receive SIGPIPE
+# (exit 141) the moment grep finds the match, which would falsely fail
+# this gate.
+if [ "$VARIANT" = "release" ]; then
+  if ! unzip -l "$DEST" "assets/index.android.bundle" >/dev/null 2>&1; then
+    echo "FATAL: release APK is missing assets/index.android.bundle." >&2
+    echo "       This APK would crash with 'Unable to load script' on first launch." >&2
+    rm -f "$DEST" "$DEST.sha256"
+    exit 1
+  fi
+  BUNDLE_SIZE="$(unzip -l "$DEST" "assets/index.android.bundle" | awk 'NR==4 { print $1 }')"
+  echo "==> verified: assets/index.android.bundle present (${BUNDLE_SIZE} bytes)"
+fi
+
 echo "==> done: $DEST"

@@ -18,11 +18,13 @@ This is the fastest path if you have an Android phone.
 
 ### Where to find the APK
 
-Each tagged release attaches the APK as a release asset on GitHub:
+Each tagged release attaches **one** sideload-ready APK as a release asset on GitHub:
 
 > https://github.com/AryanSahay1/Nexus/releases
 
-Download the file named `nexus-<version>-android-debug.apk` directly to your Android device (Chrome, Firefox, or any browser).
+Download the file named `nexus-<version>-android-release.apk` directly to your Android device (Chrome, Firefox, or any browser).
+
+> ⚠️ **DO NOT install the debug APK.** Releases on or before v0.1.2 attached a `*-android-debug.apk` next to the release APK. The debug variant **does not bundle JavaScript** — it expects a Metro dev server (`npx expo start`) at runtime, and sideloading it without Metro produces the red **"Unable to load script. Make sure you're either running Metro …"** crash on Android. As of v0.1.3 the debug APK is no longer attached to public GitHub Releases — it lives only as a workflow artifact for developers running `npx expo start`. If you have a `*-debug.apk` from an earlier release, uninstall it and install the `*-release.apk` instead.
 
 > The APK is **debug-signed**. Android will warn that it's "from an unknown developer" — that's expected. The signing certificate is the standard Android debug keystore. The release pipeline does not (yet) ship a Play Store-signed AAB; for that, use Path B.
 
