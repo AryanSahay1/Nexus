@@ -244,8 +244,8 @@ export const createNexusApiClient = (): AxiosInstance => {
 export const apiClient: AxiosInstance = createNexusApiClient();
 
 /**
- * Convenience wrapper: any service that wants `Result<T, NexusError>`
- * semantics on top of the axios call site can route through this helper.
+ * Convenience wrapper for services that want `Result<T, NexusError>`
+ * semantics on top of the axios call site.
  */
 export const requestAsResult = async <T>(
   client: AxiosInstance,
