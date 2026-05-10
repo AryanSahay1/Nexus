@@ -20,12 +20,16 @@ import {
   type CalendarEvent,
   type GoogleCalendarCreateEventResult,
 } from '../types/tools';
+import { type DriveDocContent, type DriveFile, type EmailDetail } from '../types/google';
 import { type OpenAiToolDefinition } from '../types/agent';
 import { NexusError, type Result } from '../types/auth';
+import { type UserPreference } from '../db/preferencesRepo';
 
 import * as gmail from '../tools/gmail';
 import * as gcal from '../tools/googleCalendar';
 import * as contacts from '../tools/contacts';
+import * as drive from '../tools/drive';
+import * as memory from '../tools/memory';
 
 interface ToolEntryBase<P, R> {
   readonly name: string;
@@ -38,19 +42,36 @@ interface ToolEntryBase<P, R> {
 
 type GmailReadEntry = ToolEntryBase<GmailReadRecentParams, GmailReadRecentResult>;
 type GmailSendEntry = ToolEntryBase<GmailSendEmailParams, GmailSendEmailResult>;
+type GmailSearchEntry = ToolEntryBase<gmail.GmailSearchParams, GmailReadRecentResult>;
+type GmailReadEmailEntry = ToolEntryBase<gmail.GmailReadEmailParams, EmailDetail>;
 type CalendarCreateEntry = ToolEntryBase<CalendarEventInput, GoogleCalendarCreateEventResult>;
 type CalendarNextEntry = ToolEntryBase<Record<string, never>, CalendarEvent | null>;
 type ContactsSearchEntry = ToolEntryBase<
   ContactsSearchParams,
   { matches: readonly ContactMatch[]; message?: string }
 >;
+type DriveListEntry = ToolEntryBase<drive.DriveListParams, { files: readonly DriveFile[] }>;
+type DriveReadEntry = ToolEntryBase<drive.DriveReadParams, DriveDocContent>;
+type RememberFactEntry = ToolEntryBase<memory.RememberFactParams, UserPreference>;
+type RecallFactEntry = ToolEntryBase<memory.RecallFactParams, { key: string; value: string | null }>;
+type ListMemoriesEntry = ToolEntryBase<
+  Record<string, never>,
+  { entries: readonly { key: string; value: string; category: string }[] }
+>;
 
 export type AnyToolEntry =
   | GmailReadEntry
   | GmailSendEntry
+  | GmailSearchEntry
+  | GmailReadEmailEntry
   | CalendarCreateEntry
   | CalendarNextEntry
-  | ContactsSearchEntry;
+  | ContactsSearchEntry
+  | DriveListEntry
+  | DriveReadEntry
+  | RememberFactEntry
+  | RecallFactEntry
+  | ListMemoriesEntry;
 
 const GMAIL_READ: GmailReadEntry = {
   name: 'gmail_read_recent',
@@ -192,12 +213,177 @@ const CONTACTS_SEARCH: ContactsSearchEntry = {
   },
 };
 
+const GMAIL_SEARCH: GmailSearchEntry = {
+  name: 'gmail_search',
+  isDestructive: false,
+  parseParams: gmail.parseGmailSearchParams,
+  execute: gmail.gmailSearch,
+  summarize: () => 'Search Gmail',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'gmail_search',
+      description:
+        "Searches the user's Gmail using Gmail search syntax (e.g. 'from:boss@x.com after:2025/01/01 has:attachment').",
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Gmail search query.' },
+          limit: { type: 'integer', description: 'Max results (default 5, max 10).' },
+        },
+        required: ['query'],
+      },
+    },
+  },
+};
+
+const GMAIL_READ_EMAIL: GmailReadEmailEntry = {
+  name: 'gmail_read_email',
+  isDestructive: false,
+  parseParams: gmail.parseGmailReadEmailParams,
+  execute: gmail.gmailReadEmail,
+  summarize: () => 'Read a specific email by id',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'gmail_read_email',
+      description:
+        'Reads the full body of a single Gmail message by its id. Use after gmail_read_recent or gmail_search returns the id.',
+      parameters: {
+        type: 'object',
+        properties: { id: { type: 'string', description: 'Gmail message id.' } },
+        required: ['id'],
+      },
+    },
+  },
+};
+
+const DRIVE_LIST: DriveListEntry = {
+  name: 'drive_list_recent',
+  isDestructive: false,
+  parseParams: drive.parseDriveListParams,
+  execute: drive.driveListRecent,
+  summarize: () => 'List recent Drive files',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'drive_list_recent',
+      description: "Lists the user's recently modified Google Drive files.",
+      parameters: {
+        type: 'object',
+        properties: {
+          limit: { type: 'integer', description: 'Number of files (default 10, max 20).' },
+          query: {
+            type: 'string',
+            description:
+              "Optional Drive query syntax (e.g. \"name contains 'roadmap'\", \"mimeType='application/vnd.google-apps.document'\").",
+          },
+        },
+        required: [],
+      },
+    },
+  },
+};
+
+const DRIVE_READ: DriveReadEntry = {
+  name: 'drive_read_doc',
+  isDestructive: false,
+  parseParams: drive.parseDriveReadParams,
+  execute: drive.driveReadDoc,
+  summarize: () => 'Read a Google Doc',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'drive_read_doc',
+      description:
+        'Exports a Google Doc as plain text. Body is truncated at 8k characters. Use after drive_list_recent returns a file id.',
+      parameters: {
+        type: 'object',
+        properties: { file_id: { type: 'string', description: 'Drive file id.' } },
+        required: ['file_id'],
+      },
+    },
+  },
+};
+
+const REMEMBER_FACT: RememberFactEntry = {
+  name: 'remember_fact',
+  isDestructive: false,
+  parseParams: memory.parseRememberFactParams,
+  execute: memory.rememberFact,
+  summarize: () => 'Save a memory',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'remember_fact',
+      description:
+        "Stores a small fact in Nexus's local memory so future agent turns can reference it. Use sparingly — only for things the user explicitly asks to remember or that are clearly stable preferences.",
+      parameters: {
+        type: 'object',
+        properties: {
+          key: { type: 'string', description: 'Short snake_case identifier (e.g. wife_phone, email_tone).' },
+          value: { type: 'string', description: 'The fact to remember.' },
+          category: {
+            type: 'string',
+            enum: ['communication', 'contacts', 'behavior'],
+            description: 'Category bucket; default behavior.',
+          },
+        },
+        required: ['key', 'value'],
+      },
+    },
+  },
+};
+
+const RECALL_FACT: RecallFactEntry = {
+  name: 'recall_fact',
+  isDestructive: false,
+  parseParams: memory.parseRecallFactParams,
+  execute: memory.recallFact,
+  summarize: () => 'Recall a memory',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'recall_fact',
+      description: 'Reads a previously-stored memory by key. Returns null when not set.',
+      parameters: {
+        type: 'object',
+        properties: { key: { type: 'string', description: 'Memory key.' } },
+        required: ['key'],
+      },
+    },
+  },
+};
+
+const LIST_MEMORIES: ListMemoriesEntry = {
+  name: 'list_memories',
+  isDestructive: false,
+  parseParams: memory.parseListMemoriesParams,
+  execute: memory.listMemories,
+  summarize: () => 'List all memories',
+  definition: {
+    type: 'function',
+    function: {
+      name: 'list_memories',
+      description: 'Lists every memory currently stored in the local user_preferences table.',
+      parameters: { type: 'object', properties: {}, required: [] },
+    },
+  },
+};
+
 const ALL_ENTRIES: readonly AnyToolEntry[] = Object.freeze([
   GMAIL_READ,
   GMAIL_SEND,
+  GMAIL_SEARCH,
+  GMAIL_READ_EMAIL,
   CALENDAR_CREATE,
   CALENDAR_NEXT,
   CONTACTS_SEARCH,
+  DRIVE_LIST,
+  DRIVE_READ,
+  REMEMBER_FACT,
+  RECALL_FACT,
+  LIST_MEMORIES,
 ]);
 
 /** Return all tool definitions ready for the OpenAI request body. */
