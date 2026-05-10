@@ -1,5 +1,16 @@
 # Nexus
 
+> **Two builds live in this repo. Pick the one for your phone:**
+>
+> | Phone | Build | APK |
+> |---|---|---|
+> | **Vivo V27 / FunTouch OS** (or anything on which the React Native release crashed on launch) | **Native Kotlin / Jetpack Compose** | [`v2.0.0-android-native`](https://github.com/AryanSahay1/Nexus/releases/tag/v2.0.0-android-native) — 2.20 MB, runs natively without the React Native bridge |
+> | Anything else (Pixel, Samsung One UI, MIUI, etc.) | **React Native / Expo SDK 50** | [`v1.0.3`](https://github.com/AryanSahay1/Nexus/releases/tag/v1.0.3) — 38 MB, the original codebase documented below |
+>
+> Source for the native build: branch [`cursor/native-android-nexus-358a`](https://github.com/AryanSahay1/Nexus/tree/cursor/native-android-nexus-358a) (PR #13). Source for the React Native build: this `main` branch.
+
+---
+
 > Your local-first AI agent that lives on your device, knows your Gmail, reads your calendar, remembers what matters, and asks before it acts.
 
 Built with Expo SDK 50 + React Native + strict TypeScript. **All credentials live in the device's secure enclave (Keychain / Keystore) — no token, key, or message body ever leaves the phone except as the literal payload of a Google or OpenAI API call you authorized.**

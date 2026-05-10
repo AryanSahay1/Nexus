@@ -22,6 +22,20 @@ android/
 # Release artifacts — built by scripts/release.sh, kept locally only.
 release/
 
+# Native Kotlin Android build artefacts (introduced by PR #13).
+*.iml
+local.properties
+build
+captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.ap_
+*.dex
+keystore.properties
+*.keystore
+
 *.jks
 *.p8
 *.p12
@@ -35,8 +49,7 @@ release/
 
 .metro-health-check*
 
-# Native Android build artefacts left over from prior branches
-local.properties
+# Native Android build artefacts (sub-paths under the kept `app/`).
 app/build/
 app/intermediates/
 
