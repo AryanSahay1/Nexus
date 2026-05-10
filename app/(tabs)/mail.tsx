@@ -25,19 +25,17 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useStore } from 'zustand';
 
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
+import { EmptyState } from '../../src/components/shared/EmptyState';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
 import { LoadingSpinner } from '../../src/components/shared/LoadingSpinner';
-import * as googleService from '../../src/services/googleService';
-import { getVaultStore } from '../../src/store/vaultStore';
+import { useAuth } from '../../src/hooks/useAuth';
+import { useMail } from '../../src/hooks/useMail';
 import { THEME } from '../../src/theme';
 import { type GmailMessageSummary } from '../../src/types/tools';
 import { type EmailDetail } from '../../src/types/google';
-
-const PAGE_SIZE = 20 as const;
 
 const formatRelativeDate = (iso: string | null): string => {
   if (!iso) return '';
@@ -94,59 +92,49 @@ MailRow.displayName = 'MailRow';
 const MailScreenInner: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const googleConnected = useStore(
-    getVaultStore(),
-    (s) => s.snapshot.google.status === 'connected',
-  );
+  const { googleConnected } = useAuth();
+  const mail = useMail();
 
-  const [threads, setThreads] = useState<readonly GmailMessageSummary[]>([]);
-  const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [openMessage, setOpenMessage] = useState<EmailDetail | null>(null);
   const [openLoading, setOpenLoading] = useState(false);
 
-  const loadInbox = useCallback(async (initial: boolean) => {
-    if (initial) setLoading(true);
-    setError(null);
-    const result = await googleService.listGmailMessages({ limit: PAGE_SIZE });
-    if (initial) setLoading(false);
-    setRefreshing(false);
-    if (!result.ok) {
-      setError(`${result.error.code}: ${result.error.message}`);
-      return;
-    }
-    setThreads(result.value);
-  }, []);
-
   useEffect(() => {
     if (googleConnected) {
-      void loadInbox(true);
+      void mail.load();
     }
-  }, [googleConnected, loadInbox]);
+    // mail is intentionally a stable hook reference — its identity is
+    // constant per mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleConnected]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    void loadInbox(false);
-  }, [loadInbox]);
+    void (async () => {
+      await mail.refresh();
+      setRefreshing(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleOpen = useCallback((id: string) => {
     setOpenLoading(true);
     setOpenMessage(null);
     void (async () => {
-      const result = await googleService.getGmailMessage(id);
+      const result = await mail.openThread(id);
       setOpenLoading(false);
-      if (result.ok) {
-        setOpenMessage(result.value);
-      } else {
-        setError(`${result.error.code}: ${result.error.message}`);
-      }
+      if (result.ok) setOpenMessage(result.value);
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleClose = useCallback(() => {
     setOpenMessage(null);
   }, []);
+
+  const threads = mail.threads;
+  const loading = mail.status === 'loading_cache' || mail.status === 'loading_network';
+  const errorText = mail.error ? `${mail.error.code}: ${mail.error.message}` : null;
 
   if (!googleConnected) {
     return (
@@ -212,14 +200,27 @@ const MailScreenInner: React.FC = () => {
 
   return (
     <View style={[styles.flex, { paddingTop: insets.top + THEME.spacing.lg }]}>
-      <Text style={styles.heading}>MAIL</Text>
-      <Text style={styles.subheading}>
-        {threads.length} recent {threads.length === 1 ? 'message' : 'messages'}
-      </Text>
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.heading}>MAIL</Text>
+          <Text style={styles.subheading}>
+            {threads.length} recent {threads.length === 1 ? 'message' : 'messages'}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Compose new email"
+          onPress={() => router.push('/compose')}
+          hitSlop={THEME.hitSlop}
+          style={styles.composeButton}
+        >
+          <Text style={styles.composeGlyph}>＋</Text>
+        </Pressable>
+      </View>
 
-      {error !== null ? (
+      {errorText !== null ? (
         <ClawPanel tone="danger" style={styles.errorPanel}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>{errorText}</Text>
         </ClawPanel>
       ) : null}
 
@@ -228,12 +229,11 @@ const MailScreenInner: React.FC = () => {
           <LoadingSpinner label="Loading inbox…" />
         </View>
       ) : threads.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyTitle}>Inbox empty</Text>
-          <Text style={styles.emptyBody}>
-            No recent messages. Pull down to refresh.
-          </Text>
-        </View>
+        <EmptyState
+          glyph="✉"
+          title="Inbox empty"
+          body="No recent messages. Pull down to refresh."
+        />
       ) : (
         <FlashList
           data={threads as GmailMessageSummary[]}
@@ -263,6 +263,27 @@ const MailScreen: React.FC = () => (
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: THEME.colors.background.primary },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingRight: THEME.spacing.lg,
+  },
+  composeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: THEME.radius.sm,
+    borderWidth: 1,
+    borderColor: THEME.colors.border.active,
+    backgroundColor: THEME.colors.accentFill.cyanStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  composeGlyph: {
+    fontFamily: THEME.fonts.display,
+    fontSize: THEME.fontSizes.xl,
+    color: THEME.colors.accent.cyan,
+    lineHeight: THEME.fontSizes.xl,
+  },
   heading: {
     fontFamily: THEME.fonts.display,
     fontSize: THEME.fontSizes.display,

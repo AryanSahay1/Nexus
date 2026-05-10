@@ -27,7 +27,7 @@ import { NexusError, type Result, err, ok } from '../types/auth';
 import { logError, logEvent } from '../utils/logger';
 
 const DB_NAME = 'nexus.db' as const;
-const CURRENT_SCHEMA_VERSION = 1 as const;
+const CURRENT_SCHEMA_VERSION = 2 as const;
 
 /**
  * Migrations are forward-only. Each entry is `[targetVersion, sqlBatch]`.
@@ -64,6 +64,42 @@ const MIGRATIONS: readonly { readonly version: number; readonly sql: string }[] 
 
       CREATE INDEX IF NOT EXISTS idx_chat_history_created_at
         ON chat_history (created_at);
+    `,
+  },
+  {
+    version: 2,
+    sql: `
+      -- Local cache of Gmail thread summaries. Powers offline-first
+      -- rendering of the Mail screen — when the device has no network
+      -- on launch, the most-recent fetched view is shown immediately
+      -- and the network refresh runs in parallel.
+      CREATE TABLE IF NOT EXISTS cached_emails (
+        id            TEXT    PRIMARY KEY,
+        thread_id     TEXT    NOT NULL,
+        sender        TEXT    NOT NULL,
+        subject       TEXT    NOT NULL,
+        snippet       TEXT    NOT NULL,
+        date_iso      TEXT,
+        unread        INTEGER NOT NULL DEFAULT 0,
+        cached_at     INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_cached_emails_cached_at
+        ON cached_emails (cached_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_cached_emails_date_iso
+        ON cached_emails (date_iso DESC);
+
+      -- Local cache of Calendar events for offline-first rendering of
+      -- the Calendar screen. Same offline-first contract as cached_emails.
+      CREATE TABLE IF NOT EXISTS cached_events (
+        id           TEXT    PRIMARY KEY,
+        summary      TEXT    NOT NULL,
+        start_iso    TEXT    NOT NULL,
+        end_iso      TEXT    NOT NULL,
+        html_link    TEXT,
+        cached_at    INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_cached_events_start_iso
+        ON cached_events (start_iso ASC);
     `,
   },
 ];

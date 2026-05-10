@@ -18,10 +18,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from 'zustand';
 
+import { Avatar } from '../../src/components/shared/Avatar';
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
-import { wipeAllCredentials } from '../../src/services/tokenService';
+import { StatusPill } from '../../src/components/shared/StatusPill';
+import * as emailRepository from '../../src/db/emailRepository';
+import * as eventRepository from '../../src/db/eventRepository';
+import { useAuth } from '../../src/hooks/useAuth';
+import { getChatStore } from '../../src/store/chatStore';
 import {
   detectActiveProfile,
   getSettingsStore,
@@ -40,6 +45,7 @@ const MODEL_PRESETS: readonly string[] = [
 const SettingsScreenInner: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const auth = useAuth();
   const baseUrl = useStore(getSettingsStore(), (s) => s.baseUrl);
   const model = useStore(getSettingsStore(), (s) => s.model);
   const temperature = useStore(getSettingsStore(), (s) => s.temperature);
@@ -88,7 +94,7 @@ const SettingsScreenInner: React.FC = () => {
   const handleResetEverything = useCallback(() => {
     Alert.alert(
       'Factory reset?',
-      'This wipes all credentials and saved memories. The chat history will also be cleared.',
+      'This wipes ALL credentials, saved memories, chat history, and cached email/calendar data on this device.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -96,8 +102,10 @@ const SettingsScreenInner: React.FC = () => {
           style: 'destructive',
           onPress: () => {
             void (async () => {
-              await wipeAllCredentials();
-              await getSettingsStore().getState().clearOpenAiApiKey().catch(() => undefined);
+              await auth.wipeAllCredentials();
+              await getChatStore().getState().clearHistory();
+              await emailRepository.clear();
+              await eventRepository.clear();
               getVaultStore().getState().markDisconnected('google');
               getVaultStore().getState().markDisconnected('openai');
               getVaultStore().getState().markDisconnected('whatsapp');
@@ -106,7 +114,7 @@ const SettingsScreenInner: React.FC = () => {
         },
       ],
     );
-  }, []);
+  }, [auth]);
 
   return (
     <ScrollView
@@ -115,6 +123,57 @@ const SettingsScreenInner: React.FC = () => {
     >
       <Text style={styles.heading}>SETTINGS</Text>
       <Text style={styles.subheading}>Configure your AI provider and behavior.</Text>
+
+      <ClawPanel style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <View style={styles.accountRow}>
+          <Avatar
+            label={auth.googleEmail ?? 'Nexus user'}
+            size="md"
+          />
+          <View style={styles.accountIdentity}>
+            <Text style={styles.accountName} numberOfLines={1}>
+              {auth.googleEmail ?? 'Not signed in'}
+            </Text>
+            <View style={styles.accountStatusRow}>
+              <StatusPill
+                label={auth.googleConnected ? 'Google' : 'No Google'}
+                tone={auth.googleConnected ? 'success' : 'neutral'}
+              />
+              <StatusPill
+                label={auth.openAiConfigured ? 'AI key' : 'No AI key'}
+                tone={auth.openAiConfigured ? 'success' : 'neutral'}
+              />
+            </View>
+          </View>
+        </View>
+        {auth.googleConnected ? (
+          <View style={{ marginTop: THEME.spacing.md }}>
+            <GlowButton
+              label="Sign out of Google"
+              variant="danger"
+              fullWidth
+              loading={auth.disconnecting}
+              onPress={() => {
+                Alert.alert(
+                  'Sign out of Google?',
+                  'This wipes the stored Google tokens from this device. The app keeps working — you can reconnect any time from Vault.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Sign out',
+                      style: 'destructive',
+                      onPress: () => {
+                        void auth.disconnectGoogle();
+                      },
+                    },
+                  ],
+                );
+              }}
+            />
+          </View>
+        ) : null}
+      </ClawPanel>
 
       <ClawPanel style={styles.section}>
         <Text style={styles.sectionTitle}>Connected services & memories</Text>
@@ -299,6 +358,24 @@ const styles = StyleSheet.create({
     fontSize: THEME.fontSizes.md,
     color: THEME.colors.text.primary,
     marginBottom: THEME.spacing.md,
+  },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.md,
+  },
+  accountIdentity: {
+    flex: 1,
+  },
+  accountName: {
+    fontFamily: THEME.fonts.bodySemibold,
+    fontSize: THEME.fontSizes.md,
+    color: THEME.colors.text.primary,
+  },
+  accountStatusRow: {
+    flexDirection: 'row',
+    gap: THEME.spacing.sm,
+    marginTop: THEME.spacing.sm,
   },
   linkRow: {
     flexDirection: 'row',

@@ -297,6 +297,14 @@ const RootLayout: React.FC = () => {
               name="auth/connect"
               options={{ presentation: 'modal' }}
             />
+            <Stack.Screen
+              name="compose"
+              options={{ presentation: 'modal' }}
+            />
+            <Stack.Screen
+              name="event-new"
+              options={{ presentation: 'modal' }}
+            />
           </Stack>
         </ErrorBoundary>
       </GestureHandlerRootView>

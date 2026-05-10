@@ -26,19 +26,17 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useStore } from 'zustand';
 
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
+import { EmptyState } from '../../src/components/shared/EmptyState';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
 import { LoadingSpinner } from '../../src/components/shared/LoadingSpinner';
-import * as googleService from '../../src/services/googleService';
+import { useAuth } from '../../src/hooks/useAuth';
+import { useCalendar, type RangeKey } from '../../src/hooks/useCalendar';
 import * as notificationService from '../../src/services/notificationService';
-import { getVaultStore } from '../../src/store/vaultStore';
 import { THEME } from '../../src/theme';
 import { type CalendarEvent } from '../../src/types/tools';
-
-type RangeKey = 'today' | 'week' | 'two_weeks';
 
 const RANGES: readonly { readonly id: RangeKey; readonly label: string }[] = [
   { id: 'today', label: 'Today' },
@@ -46,20 +44,9 @@ const RANGES: readonly { readonly id: RangeKey; readonly label: string }[] = [
   { id: 'two_weeks', label: '2 weeks' },
 ];
 
-const computeRange = (key: RangeKey, now: Date): { min: Date; max: Date } => {
-  const min = new Date(now);
-  min.setHours(0, 0, 0, 0);
-  const max = new Date(now);
-  max.setHours(0, 0, 0, 0);
-  if (key === 'today') {
-    max.setDate(max.getDate() + 1);
-  } else if (key === 'week') {
-    max.setDate(max.getDate() + 7);
-  } else {
-    max.setDate(max.getDate() + 14);
-  }
-  return { min, max };
-};
+// Range computation now lives inside `useCalendar` — the screen
+// only consumes the resolved RangeKey and does not need to translate
+// it into ISO timestamps itself.
 
 const groupByDay = (
   events: readonly CalendarEvent[],
@@ -122,51 +109,31 @@ EventRow.displayName = 'EventRow';
 const CalendarScreenInner: React.FC = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const googleConnected = useStore(
-    getVaultStore(),
-    (s) => s.snapshot.google.status === 'connected',
-  );
-
-  const [range, setRange] = useState<RangeKey>('week');
-  const [events, setEvents] = useState<readonly CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { googleConnected } = useAuth();
+  const calendar = useCalendar('week');
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadEvents = useCallback(
-    async (initial: boolean): Promise<void> => {
-      if (initial) setLoading(true);
-      setError(null);
-      const now = new Date();
-      const { min, max } = computeRange(range, now);
-      const result = await googleService.listCalendarEvents({
-        timeMinIso: min.toISOString(),
-        timeMaxIso: max.toISOString(),
-        limit: 50,
-      });
-      if (initial) setLoading(false);
-      setRefreshing(false);
-      if (!result.ok) {
-        setError(`${result.error.code}: ${result.error.message}`);
-        return;
-      }
-      setEvents(result.value);
-    },
-    [range],
-  );
 
   useEffect(() => {
     if (googleConnected) {
-      void loadEvents(true);
+      void calendar.load();
     }
-  }, [googleConnected, loadEvents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleConnected, calendar.range]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    void loadEvents(false);
-  }, [loadEvents]);
+    void (async () => {
+      await calendar.refresh();
+      setRefreshing(false);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const grouped = useMemo(() => groupByDay(events), [events]);
+  const grouped = useMemo(() => groupByDay(calendar.events), [calendar.events]);
+  const loading =
+    calendar.status === 'loading_cache' || calendar.status === 'loading_network';
+  const errorText =
+    calendar.error ? `${calendar.error.code}: ${calendar.error.message}` : null;
 
   const handleScheduleReminder = useCallback((event: CalendarEvent) => {
     Alert.alert(
@@ -232,18 +199,31 @@ const CalendarScreenInner: React.FC = () => {
 
   return (
     <View style={[styles.flex, { paddingTop: insets.top + THEME.spacing.lg }]}>
-      <Text style={styles.heading}>CALENDAR</Text>
-      <Text style={styles.subheading}>
-        Long-press an event to schedule a reminder.
-      </Text>
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.heading}>CALENDAR</Text>
+          <Text style={styles.subheading}>
+            Long-press an event to schedule a reminder.
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="New event"
+          onPress={() => router.push('/event-new')}
+          hitSlop={THEME.hitSlop}
+          style={styles.newEventButton}
+        >
+          <Text style={styles.newEventGlyph}>＋</Text>
+        </Pressable>
+      </View>
 
       <View style={styles.rangeRow}>
         {RANGES.map((r) => {
-          const active = r.id === range;
+          const active = r.id === calendar.range;
           return (
             <Pressable
               key={r.id}
-              onPress={() => setRange(r.id)}
+              onPress={() => calendar.setRange(r.id)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               style={[styles.rangeChip, active && styles.rangeChipActive]}
@@ -261,9 +241,9 @@ const CalendarScreenInner: React.FC = () => {
         })}
       </View>
 
-      {error !== null ? (
+      {errorText !== null ? (
         <ClawPanel tone="danger" style={styles.errorPanel}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>{errorText}</Text>
         </ClawPanel>
       ) : null}
 
@@ -272,12 +252,11 @@ const CalendarScreenInner: React.FC = () => {
           <LoadingSpinner label="Loading calendar…" />
         </View>
       ) : grouped.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyTitle}>No upcoming events</Text>
-          <Text style={styles.emptyBody}>
-            Pull down to refresh, or change the range above.
-          </Text>
-        </View>
+        <EmptyState
+          glyph="📅"
+          title="No upcoming events"
+          body="Pull down to refresh, or change the range above."
+        />
       ) : (
         <FlashList
           data={grouped as { readonly dayKey: string; readonly events: readonly CalendarEvent[] }[]}
@@ -314,6 +293,27 @@ const CalendarScreen: React.FC = () => (
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: THEME.colors.background.primary },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingRight: THEME.spacing.lg,
+  },
+  newEventButton: {
+    width: 40,
+    height: 40,
+    borderRadius: THEME.radius.sm,
+    borderWidth: 1,
+    borderColor: THEME.colors.border.active,
+    backgroundColor: THEME.colors.accentFill.cyanStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  newEventGlyph: {
+    fontFamily: THEME.fonts.display,
+    fontSize: THEME.fontSizes.xl,
+    color: THEME.colors.accent.cyan,
+    lineHeight: THEME.fontSizes.xl,
+  },
   heading: {
     fontFamily: THEME.fonts.display,
     fontSize: THEME.fontSizes.display,

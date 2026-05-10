@@ -13,11 +13,23 @@
 
 import { type Provider } from '../types/auth';
 
+/**
+ * Light user identity passed into the prompt so the agent can address
+ * the user by name or email when natural. The fields are independent
+ * (some users connect Google but never share a profile name; some use
+ * the OpenAI key path only and have no email at all).
+ */
+export interface SystemPromptUser {
+  readonly email: string | null;
+  readonly displayName: string | null;
+}
+
 export interface SystemPromptInput {
   readonly now: Date;
   readonly timezone: string;
   readonly preferences: Readonly<Record<string, string>>;
   readonly connectedProviders: readonly Provider[];
+  readonly user?: SystemPromptUser;
 }
 
 const formatNow = (now: Date, timezone: string): string => {
@@ -63,15 +75,33 @@ const RULES = [
   '- Times are interpreted in the timezone shown above unless the user gives an explicit one.',
 ];
 
+const formatUser = (user: SystemPromptUser | undefined): string | null => {
+  if (!user) return null;
+  const parts: string[] = [];
+  if (user.displayName !== null && user.displayName.length > 0) {
+    parts.push(`Name: ${user.displayName}`);
+  }
+  if (user.email !== null && user.email.length > 0) {
+    parts.push(`Email: ${user.email}`);
+  }
+  if (parts.length === 0) return null;
+  return parts.map((p) => `  - ${p}`).join('\n');
+};
+
 export const build = (input: SystemPromptInput): string => {
-  const sections = [
+  const sections: string[] = [
     BASE,
     `Current time: ${formatNow(input.now, input.timezone)} (${input.timezone})`,
-    'User preferences:',
-    formatPreferences(input.preferences),
-    'Connected services:',
-    formatConnections(input.connectedProviders),
-    RULES.join('\n'),
   ];
+  const userBlock = formatUser(input.user);
+  if (userBlock !== null) {
+    sections.push('User identity:');
+    sections.push(userBlock);
+  }
+  sections.push('User preferences:');
+  sections.push(formatPreferences(input.preferences));
+  sections.push('Connected services:');
+  sections.push(formatConnections(input.connectedProviders));
+  sections.push(RULES.join('\n'));
   return sections.join('\n\n');
 };
