@@ -31,7 +31,7 @@ import { useStore } from 'zustand';
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
-import { LoadingSpinner } from '../../src/components/shared/LoadingSpinner';
+import { FadeSlideIn, SkeletonShimmer } from '../../src/components/motion';
 import * as googleService from '../../src/services/googleService';
 import * as notificationService from '../../src/services/notificationService';
 import { getVaultStore } from '../../src/store/vaultStore';
@@ -268,8 +268,16 @@ const CalendarScreenInner: React.FC = () => {
       ) : null}
 
       {loading ? (
-        <View style={styles.center}>
-          <LoadingSpinner label="Loading calendar…" />
+        <View style={styles.skeletonList}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <View key={`sk-${i}`} style={styles.skeletonRow}>
+              <SkeletonShimmer width={56} height={14} radius={6} />
+              <View style={{ height: 8 }} />
+              <SkeletonShimmer width="80%" height={20} radius={8} />
+              <View style={{ height: 6 }} />
+              <SkeletonShimmer width="55%" height={12} radius={6} />
+            </View>
+          ))}
         </View>
       ) : grouped.length === 0 ? (
         <View style={styles.center}>
@@ -284,13 +292,15 @@ const CalendarScreenInner: React.FC = () => {
           keyExtractor={(item) => item.dayKey}
           estimatedItemSize={140}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => (
-            <View style={styles.dayBlock}>
-              <Text style={styles.dayLabel}>{item.dayKey}</Text>
-              {item.events.map((e) => (
-                <EventRow key={e.id} event={e} onLongPress={handleScheduleReminder} />
-              ))}
-            </View>
+          renderItem={({ item, index }) => (
+            <FadeSlideIn index={index}>
+              <View style={styles.dayBlock}>
+                <Text style={styles.dayLabel}>{item.dayKey}</Text>
+                {item.events.map((e) => (
+                  <EventRow key={e.id} event={e} onLongPress={handleScheduleReminder} />
+                ))}
+              </View>
+            </FadeSlideIn>
           )}
           refreshControl={
             <RefreshControl
@@ -395,6 +405,14 @@ const styles = StyleSheet.create({
     fontSize: THEME.fontSizes.xs,
     color: THEME.colors.text.muted,
     marginTop: 4,
+  },
+  skeletonList: {
+    paddingHorizontal: THEME.spacing.lg,
+    paddingTop: THEME.spacing.md,
+    gap: THEME.spacing.md,
+  },
+  skeletonRow: {
+    paddingVertical: THEME.spacing.md,
   },
   center: {
     flex: 1,

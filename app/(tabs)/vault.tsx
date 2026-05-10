@@ -21,6 +21,7 @@ import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
 import { StatusPill } from '../../src/components/shared/StatusPill';
 import { ServiceCard } from '../../src/components/vault/ServiceCard';
+import { FadeSlideIn } from '../../src/components/motion';
 import { validateApiKey } from '../../src/services/openaiService';
 import { getAuthStore } from '../../src/store/authStore';
 import { getSettingsStore } from '../../src/store/settingsStore';
@@ -139,29 +140,37 @@ const VaultScreenInner: React.FC = () => {
       style={styles.flex}
       contentContainerStyle={[styles.content, { paddingTop: insets.top + THEME.spacing.lg }]}
     >
-      <Text style={styles.heading}>VAULT</Text>
-      <Text style={styles.subheading}>Connected accounts and credentials</Text>
+      <FadeSlideIn index={0}>
+        <Text style={styles.heading}>VAULT</Text>
+      </FadeSlideIn>
+      <FadeSlideIn index={1}>
+        <Text style={styles.subheading}>Connected accounts and credentials</Text>
+      </FadeSlideIn>
 
-      <ServiceCard
-        provider="google"
-        connection={snapshot.google}
-        onConnect={() => void handleConnectGoogle()}
-        onDisconnect={handleDisconnectGoogle}
-        disabled={connecting || disconnecting}
-        {...(googleAvailable
-          ? {}
-          : { unavailableReason: 'Set EXPO_PUBLIC_GOOGLE_CLIENT_ID to enable' })}
-      />
+      <FadeSlideIn index={2}>
+        <ServiceCard
+          provider="google"
+          connection={snapshot.google}
+          onConnect={() => void handleConnectGoogle()}
+          onDisconnect={handleDisconnectGoogle}
+          disabled={connecting || disconnecting}
+          {...(googleAvailable
+            ? {}
+            : { unavailableReason: 'Set EXPO_PUBLIC_GOOGLE_CLIENT_ID to enable' })}
+        />
+      </FadeSlideIn>
 
-      <ServiceCard
-        provider="openai"
-        connection={snapshot.openai}
-        onConnect={() => {
-          // Just focus the field — the actual save is on the button below.
-        }}
-        onDisconnect={handleClearApiKey}
-        disabled={savingKey}
-      />
+      <FadeSlideIn index={3}>
+        <ServiceCard
+          provider="openai"
+          connection={snapshot.openai}
+          onConnect={() => {
+            // Just focus the field — the actual save is on the button below.
+          }}
+          onDisconnect={handleClearApiKey}
+          disabled={savingKey}
+        />
+      </FadeSlideIn>
 
       {snapshot.openai.status === 'disconnected' ? (
         <ClawPanel style={styles.keyPanel}>
@@ -202,17 +211,20 @@ const VaultScreenInner: React.FC = () => {
         </ClawPanel>
       )}
 
-      <ClawPanel style={styles.whatsappPanel} testID="vault-whatsapp-panel">
-        <View style={styles.whatsappHeader}>
-          <Text style={styles.whatsappTitle}>WhatsApp</Text>
-          <StatusPill label="Ready" tone="success" testID="vault-whatsapp-status" />
-        </View>
-        <Text style={styles.whatsappBody}>
-          WhatsApp sends via your installed WhatsApp app. No login required.
-        </Text>
-      </ClawPanel>
+      <FadeSlideIn index={5}>
+        <ClawPanel style={styles.whatsappPanel} testID="vault-whatsapp-panel">
+          <View style={styles.whatsappHeader}>
+            <Text style={styles.whatsappTitle}>WhatsApp</Text>
+            <StatusPill label="Ready" tone="success" testID="vault-whatsapp-status" />
+          </View>
+          <Text style={styles.whatsappBody}>
+            WhatsApp sends via your installed WhatsApp app. No login required.
+          </Text>
+        </ClawPanel>
+      </FadeSlideIn>
 
-      <ClawPanel style={styles.summaryPanel}>
+      <FadeSlideIn index={6}>
+        <ClawPanel style={styles.summaryPanel}>
         <Text style={styles.summaryTitle}>AI provider</Text>
         <Text style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Endpoint: </Text>
@@ -225,7 +237,8 @@ const VaultScreenInner: React.FC = () => {
         <Text style={styles.summaryHint}>
           Adjust in Settings. See docs/GOOGLE_SETUP.md for the free Google Cloud setup.
         </Text>
-      </ClawPanel>
+        </ClawPanel>
+      </FadeSlideIn>
 
       <Pressable style={{ paddingVertical: THEME.spacing.md, alignItems: 'center' }}>
         <Text style={styles.footnote}>

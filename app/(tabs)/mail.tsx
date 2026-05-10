@@ -31,6 +31,7 @@ import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { GlowButton } from '../../src/components/shared/GlowButton';
 import { LoadingSpinner } from '../../src/components/shared/LoadingSpinner';
+import { FadeSlideIn, SkeletonShimmer } from '../../src/components/motion';
 import * as googleService from '../../src/services/googleService';
 import { getVaultStore } from '../../src/store/vaultStore';
 import { THEME } from '../../src/theme';
@@ -224,8 +225,19 @@ const MailScreenInner: React.FC = () => {
       ) : null}
 
       {loading ? (
-        <View style={styles.center}>
-          <LoadingSpinner label="Loading inbox…" />
+        // Skeleton placeholder rows — the user sees the shape of the
+        // inbox before the data lands. (skill file §15)
+        <View style={styles.skeletonList}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <View key={`sk-${i}`} style={styles.skeletonRow}>
+              <SkeletonShimmer width={48} height={48} radius={24} style={styles.skeletonAvatar} />
+              <View style={styles.skeletonText}>
+                <SkeletonShimmer width="60%" height={14} radius={6} />
+                <View style={{ height: 6 }} />
+                <SkeletonShimmer width="90%" height={12} radius={6} />
+              </View>
+            </View>
+          ))}
         </View>
       ) : threads.length === 0 ? (
         <View style={styles.center}>
@@ -238,7 +250,11 @@ const MailScreenInner: React.FC = () => {
         <FlashList
           data={threads as GmailMessageSummary[]}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MailRow thread={item} onPress={handleOpen} />}
+          renderItem={({ item, index }) => (
+            <FadeSlideIn index={index}>
+              <MailRow thread={item} onPress={handleOpen} />
+            </FadeSlideIn>
+          )}
           estimatedItemSize={92}
           contentContainerStyle={styles.listContent}
           refreshControl={
@@ -328,6 +344,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: THEME.spacing.xl,
   },
+  skeletonList: {
+    paddingHorizontal: THEME.spacing.lg,
+    paddingTop: THEME.spacing.md,
+    gap: THEME.spacing.md,
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.spacing.md,
+    paddingVertical: THEME.spacing.sm,
+  },
+  skeletonAvatar: { marginRight: THEME.spacing.sm },
+  skeletonText: { flex: 1 },
   emptyTitle: {
     fontFamily: THEME.fonts.displayBold,
     fontSize: THEME.fontSizes.xl,

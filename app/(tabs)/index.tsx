@@ -37,6 +37,7 @@ import { useStore } from 'zustand';
 
 import { ClawPanel } from '../../src/components/shared/ClawPanel';
 import { GlowButton } from '../../src/components/shared/GlowButton';
+import { FadeSlideIn, Float, PressableScale } from '../../src/components/motion';
 import { ConfirmationSheet } from '../../src/components/chat/ConfirmationSheet';
 import { ErrorBoundary } from '../../src/components/shared/ErrorBoundary';
 import { MessageBubble } from '../../src/components/chat/MessageBubble';
@@ -177,25 +178,32 @@ const ChatScreenInner: React.FC = () => {
       <View style={styles.listWrap}>
         {messages.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyBolt}>⚡</Text>
-            <Text style={styles.emptyBrand}>NEXUS</Text>
-            <Text style={styles.emptyTagline}>Your local AI agent</Text>
+            <Float amplitudeDp={6} periodMs={2800}>
+              <Text style={styles.emptyBolt}>⚡</Text>
+            </Float>
+            <FadeSlideIn index={1} fromY={16}>
+              <Text style={styles.emptyBrand}>NEXUS</Text>
+            </FadeSlideIn>
+            <FadeSlideIn index={2} fromY={10}>
+              <Text style={styles.emptyTagline}>Your local AI agent</Text>
+            </FadeSlideIn>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.suggestionsRow}
             >
-              {SUGGESTIONS.map((s) => (
-                <Pressable
-                  key={s}
-                  onPress={() => handleSuggestion(s)}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [styles.suggestion, { opacity: pressed ? 0.8 : 1 }]}
-                >
-                  <ClawPanel contentStyle={styles.suggestionContent}>
-                    <Text style={styles.suggestionLabel}>{s}</Text>
-                  </ClawPanel>
-                </Pressable>
+              {SUGGESTIONS.map((s, i) => (
+                <FadeSlideIn key={s} index={3 + i} fromY={8}>
+                  <PressableScale
+                    onPress={() => handleSuggestion(s)}
+                    accessibilityRole="button"
+                    style={styles.suggestion}
+                  >
+                    <ClawPanel contentStyle={styles.suggestionContent}>
+                      <Text style={styles.suggestionLabel}>{s}</Text>
+                    </ClawPanel>
+                  </PressableScale>
+                </FadeSlideIn>
               ))}
             </ScrollView>
           </View>

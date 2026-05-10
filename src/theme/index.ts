@@ -9,6 +9,11 @@
 
 import { Easing } from 'react-native-reanimated';
 
+import { MOTION as _MOTION } from './motion';
+
+export { DURATIONS, EASINGS, SPRINGS, MOTION, staggerDelayMs } from './motion';
+export type { Motion } from './motion';
+
 // ── Colors ----------------------------------------------------------------
 
 export const COLORS = {
@@ -194,6 +199,7 @@ export const THEME = {
   shadows: SHADOWS,
   claw: CLAW_CORNER,
   animation: ANIMATION,
+  motion: _MOTION,
   hitSlop: HIT_SLOP,
 } as const;
 

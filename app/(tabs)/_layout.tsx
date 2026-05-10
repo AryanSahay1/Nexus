@@ -13,7 +13,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -45,7 +45,9 @@ const CustomTabBar: React.FC<CustomTabBarProps> = ({ state, navigation }) => {
   const indicatorX = useSharedValue(state.index);
 
   React.useEffect(() => {
-    indicatorX.value = withTiming(state.index, { duration: THEME.animation.fastIn });
+    // Snappy spring gives a light overshoot — the eye reads it as a
+    // confirmation that the tap landed.
+    indicatorX.value = withSpring(state.index, THEME.motion.springs.snappy);
   }, [state.index, indicatorX]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
