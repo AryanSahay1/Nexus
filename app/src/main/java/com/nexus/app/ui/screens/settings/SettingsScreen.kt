@@ -7,12 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,23 +17,33 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexus.app.BuildConfig
 import com.nexus.app.R
+import com.nexus.app.ui.components.leather.LeatherCard
+import com.nexus.app.ui.components.leather.LeatherCardVariant
+import com.nexus.app.ui.components.leather.OutlineLeatherButton
+import com.nexus.app.ui.theme.leather.LeatherPalette
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings_title)) },
+                title = {
+                    Text(
+                        stringResource(R.string.settings_title),
+                        color = LeatherPalette.PandaIvory
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = Color.Transparent
                 )
             )
         }
@@ -49,35 +55,31 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth()
+            LeatherCard(
+                modifier = Modifier.fillMaxWidth(),
+                variant = LeatherCardVariant.Highlight,
+                elevationLevel = 2,
+                grainSeed = 33
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column {
                     Text(
                         text = "Nexus v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = LeatherPalette.PandaIvory
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "All data lives on this device, encrypted by the Android Keystore.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = LeatherPalette.PandaCream
                     )
                 }
             }
 
-            OutlinedButton(
-                onClick = viewModel::requestReset,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_factory_reset),
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+            OutlineLeatherButton(
+                text = stringResource(R.string.settings_factory_reset),
+                onClick = viewModel::requestReset
+            )
 
             if (state.showResetConfirm) {
                 AlertDialog(
@@ -86,14 +88,23 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                     text = { Text(stringResource(R.string.settings_factory_reset_confirm)) },
                     confirmButton = {
                         TextButton(onClick = viewModel::confirmReset) {
-                            Text(stringResource(R.string.common_yes))
+                            Text(
+                                stringResource(R.string.common_yes),
+                                color = LeatherPalette.ErrorOxblood
+                            )
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = viewModel::cancelReset) {
-                            Text(stringResource(R.string.common_no))
+                            Text(
+                                stringResource(R.string.common_no),
+                                color = LeatherPalette.PandaIvory
+                            )
                         }
-                    }
+                    },
+                    containerColor = LeatherPalette.Tobacco,
+                    titleContentColor = LeatherPalette.PandaIvory,
+                    textContentColor = LeatherPalette.PandaCream
                 )
             }
         }

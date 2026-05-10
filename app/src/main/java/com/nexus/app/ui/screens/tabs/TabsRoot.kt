@@ -1,6 +1,21 @@
 package com.nexus.app.ui.screens.tabs
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.Lock
@@ -9,29 +24,36 @@ import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.nexus.app.R
+import com.nexus.app.ui.components.leather.StitchedDivider
 import com.nexus.app.ui.navigation.NexusDestinations
 import com.nexus.app.ui.screens.chat.ChatScreen
 import com.nexus.app.ui.screens.learn.LearnScreen
 import com.nexus.app.ui.screens.memory.MemoryScreen
 import com.nexus.app.ui.screens.settings.SettingsScreen
 import com.nexus.app.ui.screens.vault.VaultScreen
+import com.nexus.app.ui.theme.leather.LeatherMotion
+import com.nexus.app.ui.theme.leather.LeatherPalette
+import com.nexus.app.ui.theme.leather.LeatherTone
+import com.nexus.app.ui.theme.leather.leatherSurface
 
 private data class TabItem(
     val route: String,
@@ -49,52 +71,120 @@ private val tabs = listOf(
 
 @Composable
 fun TabsRoot() {
-    val navController = rememberNavController()
-    val backStack by navController.currentBackStackEntryAsState()
-    val currentRoute = backStack?.destination?.route
-
+    var selectedRoute by rememberSaveable { mutableStateOf(NexusDestinations.Tabs.LEARN) }
     Scaffold(
+        containerColor = Color.Transparent,
+        modifier = Modifier.leatherSurface(LeatherTone.Walnut),
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
-            ) {
-                tabs.forEach { tab ->
-                    val selected = backStack?.destination?.hierarchy?.any { it.route == tab.route } == true ||
-                        currentRoute == tab.route
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            navController.navigate(tab.route) {
-                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(tab.icon, contentDescription = null) },
-                        label = { Text(stringResource(tab.labelRes)) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.surfaceVariant,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    )
-                }
-            }
+            LeatherBottomNav(
+                selectedRoute = selectedRoute,
+                onSelect = { selectedRoute = it }
+            )
         }
     ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = NexusDestinations.Tabs.LEARN,
-            modifier = Modifier.padding(padding)
-        ) {
-            composable(NexusDestinations.Tabs.LEARN) { LearnScreen() }
-            composable(NexusDestinations.Tabs.CHAT) { ChatScreen() }
-            composable(NexusDestinations.Tabs.VAULT) { VaultScreen() }
-            composable(NexusDestinations.Tabs.MEMORY) { MemoryScreen() }
-            composable(NexusDestinations.Tabs.SETTINGS) { SettingsScreen() }
+        // Crossfade the content area when the user changes tabs — keeps the
+        // leather frame static while only the journal page turns.
+        Crossfade(
+            targetState = selectedRoute,
+            animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Moderate),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            label = "tabContent"
+        ) { route ->
+            when (route) {
+                NexusDestinations.Tabs.LEARN -> LearnScreen()
+                NexusDestinations.Tabs.CHAT -> ChatScreen()
+                NexusDestinations.Tabs.VAULT -> VaultScreen()
+                NexusDestinations.Tabs.MEMORY -> MemoryScreen()
+                NexusDestinations.Tabs.SETTINGS -> SettingsScreen()
+            }
         }
+    }
+}
+
+@Composable
+private fun LeatherBottomNav(
+    selectedRoute: String,
+    onSelect: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Top-edge thread divider so the nav reads as a separate piece of
+        // leather sewn onto the page.
+        StitchedDivider(thread = LeatherPalette.ThreadMoss.copy(alpha = 0.6f))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .leatherSurface(LeatherTone.Tobacco, grainSeed = 99)
+                .padding(vertical = 8.dp, horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            tabs.forEach { tab ->
+                NavTab(
+                    item = tab,
+                    selected = tab.route == selectedRoute,
+                    onClick = { onSelect(tab.route) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavTab(
+    item: TabItem,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val tint by animateColorAsState(
+        targetValue = if (selected) LeatherPalette.ThreadFresh else LeatherPalette.PandaCream.copy(alpha = 0.65f),
+        animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Normal),
+        label = "navTabTint"
+    )
+    val pillAlpha by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Fast),
+        label = "navTabPillAlpha"
+    )
+    val pillScale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.85f,
+        animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Normal),
+        label = "navTabPillScale"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(18.dp))
+            .clickable(role = Role.Tab, onClick = onClick)
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .semantics { role = Role.Tab }
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.size(40.dp)
+        ) {
+            // Soft moss-green pill behind the selected icon. Animates in
+            // and out instead of disappearing — the indicator feels weighted.
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .scale(pillScale)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(LeatherPalette.ThreadMoss.copy(alpha = 0.30f * pillAlpha))
+            )
+            Icon(
+                imageVector = item.icon,
+                contentDescription = null,
+                tint = tint
+            )
+        }
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = stringResource(item.labelRes),
+            style = MaterialTheme.typography.labelMedium,
+            color = tint
+        )
     }
 }

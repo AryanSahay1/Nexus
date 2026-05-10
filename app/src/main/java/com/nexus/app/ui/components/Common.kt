@@ -1,37 +1,32 @@
 package com.nexus.app.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.nexus.app.ui.components.leather.LeatherButton
+import com.nexus.app.ui.components.leather.OutlineLeatherButton
+import com.nexus.app.ui.theme.leather.LeatherTone
+import com.nexus.app.ui.theme.leather.leatherSurface
 
 @Composable
 fun LoadingScreen(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .leatherSurface(LeatherTone.Walnut),
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(
@@ -54,7 +49,7 @@ fun EmptyState(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(8.dp))
@@ -80,7 +75,7 @@ fun ErrorState(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = "Something went wrong",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(8.dp))
@@ -91,12 +86,17 @@ fun ErrorState(
             )
             if (onRetry != null) {
                 Spacer(Modifier.height(16.dp))
-                OutlinedButton(onClick = onRetry) { Text("Retry") }
+                OutlineLeatherButton(text = "Retry", onClick = onRetry)
             }
         }
     }
 }
 
+/**
+ * Backwards-compatible shim — every screen that used `PrimaryButton`
+ * now gets a `LeatherButton` for free. The old API surface is preserved
+ * (text + onClick + enabled + loading) so the migration is invisible.
+ */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -105,29 +105,13 @@ fun PrimaryButton(
     loading: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    Button(
-        onClick = { if (!loading) onClick() },
-        enabled = enabled && !loading,
+    LeatherButton(
+        text = text,
+        onClick = onClick,
+        enabled = enabled,
+        loading = loading,
         modifier = modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .clip(RoundedCornerShape(16.dp)),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
-        ),
-        contentPadding = PaddingValues(horizontal = 24.dp)
-    ) {
-        if (loading) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.onPrimary,
-                strokeWidth = 2.dp,
-                modifier = Modifier.size(20.dp)
-            )
-        } else {
-            Text(text = text, style = MaterialTheme.typography.titleMedium)
-        }
-    }
+    )
 }
 
 @Composable

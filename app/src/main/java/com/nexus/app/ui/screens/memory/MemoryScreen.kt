@@ -1,5 +1,10 @@
 package com.nexus.app.ui.screens.memory
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,12 +18,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -27,25 +31,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nexus.app.R
 import com.nexus.app.ui.components.EmptyState
-import com.nexus.app.ui.components.PrimaryButton
+import com.nexus.app.ui.components.leather.LeatherButton
+import com.nexus.app.ui.components.leather.LeatherCard
+import com.nexus.app.ui.theme.leather.LeatherMotion
+import com.nexus.app.ui.theme.leather.LeatherPalette
 
 @Composable
 fun MemoryScreen(viewModel: MemoryViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val items by viewModel.preferences.collectAsStateWithLifecycle()
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.memory_title)) },
+                title = {
+                    Text(
+                        stringResource(R.string.memory_title),
+                        color = LeatherPalette.PandaIvory
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = Color.Transparent
                 )
             )
         }
@@ -60,25 +73,45 @@ fun MemoryScreen(viewModel: MemoryViewModel = hiltViewModel()) {
             Text(
                 stringResource(R.string.memory_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = LeatherPalette.PandaCream.copy(alpha = 0.85f)
             )
             OutlinedTextField(
                 value = state.keyDraft,
                 onValueChange = viewModel::onKeyChange,
                 placeholder = { Text(stringResource(R.string.memory_key)) },
                 singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = LeatherPalette.ThreadFresh,
+                    unfocusedBorderColor = LeatherPalette.ThreadMoss,
+                    cursorColor = LeatherPalette.ThreadFresh,
+                    focusedTextColor = LeatherPalette.PandaIvory,
+                    unfocusedTextColor = LeatherPalette.PandaCream
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = state.valueDraft,
                 onValueChange = viewModel::onValueChange,
                 placeholder = { Text(stringResource(R.string.memory_value)) },
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = LeatherPalette.ThreadFresh,
+                    unfocusedBorderColor = LeatherPalette.ThreadMoss,
+                    cursorColor = LeatherPalette.ThreadFresh,
+                    focusedTextColor = LeatherPalette.PandaIvory,
+                    unfocusedTextColor = LeatherPalette.PandaCream
+                ),
                 modifier = Modifier.fillMaxWidth()
             )
             state.errorMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
-            PrimaryButton(text = stringResource(R.string.memory_save), onClick = viewModel::save)
+            LeatherButton(text = stringResource(R.string.memory_save), onClick = viewModel::save)
             Spacer(Modifier.height(4.dp))
             if (items.isEmpty()) {
                 EmptyState(
@@ -88,33 +121,43 @@ fun MemoryScreen(viewModel: MemoryViewModel = hiltViewModel()) {
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(items = items, key = { it.key }) { pref ->
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                            modifier = Modifier.fillMaxWidth()
+                        AnimatedVisibility(
+                            visible = true,
+                            enter = fadeIn(LeatherMotion.tweenLeather(LeatherMotion.Normal)) +
+                                slideInVertically(
+                                    initialOffsetY = { it / 4 },
+                                    animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Normal)
+                                ),
+                            exit = fadeOut(LeatherMotion.tweenLeather(LeatherMotion.Fast)) +
+                                slideOutVertically(
+                                    animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Fast)
+                                )
                         ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
+                            LeatherCard(
+                                modifier = Modifier.fillMaxWidth(),
+                                elevationLevel = 1,
+                                contentPadding = 14.dp
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        pref.key,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        pref.value,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                IconButton(onClick = { viewModel.delete(pref.key) }) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Delete,
-                                        contentDescription = "Delete ${pref.key}",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            pref.key,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = LeatherPalette.PandaIvory
+                                        )
+                                        Text(
+                                            pref.value,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = LeatherPalette.PandaCream
+                                        )
+                                    }
+                                    IconButton(onClick = { viewModel.delete(pref.key) }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "Delete ${pref.key}",
+                                            tint = LeatherPalette.ErrorOxblood
+                                        )
+                                    }
                                 }
                             }
                         }

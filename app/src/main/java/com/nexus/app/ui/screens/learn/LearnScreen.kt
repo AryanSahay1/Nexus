@@ -1,5 +1,11 @@
 package com.nexus.app.ui.screens.learn
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,59 +20,73 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nexus.app.core.NexusResult
 import com.nexus.app.data.intents.DeepLinks
 import com.nexus.app.data.learn.Tutorial
 import com.nexus.app.data.learn.TutorialCategory
-import com.nexus.app.data.learn.TutorialStep
-import com.nexus.app.core.NexusResult
-import com.nexus.app.ui.components.PrimaryButton
+import com.nexus.app.ui.components.leather.LeatherButton
+import com.nexus.app.ui.components.leather.LeatherCard
+import com.nexus.app.ui.components.leather.LeatherCardVariant
+import com.nexus.app.ui.components.leather.OutlineLeatherButton
+import com.nexus.app.ui.components.leather.ProgressDots
+import com.nexus.app.ui.theme.leather.LeatherMotion
+import com.nexus.app.ui.theme.leather.LeatherPalette
 
 @Composable
 fun LearnScreen(viewModel: LearnViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val active = state.activeTutorial
 
-    if (active == null) {
-        TutorialList(
-            sections = state.sections,
-            onPick = viewModel::openTutorial
-        )
-    } else {
-        TutorialPlayer(
-            tutorial = active,
-            stepIndex = state.activeStepIndex,
-            errorMessage = state.activeError,
-            onNext = viewModel::nextStep,
-            onPrevious = viewModel::previousStep,
-            onClose = viewModel::closeTutorial,
-            onActionError = viewModel::reportActionError
-        )
+    // Crossfade between the tutorial list and the player so the leather
+    // frame stays still while the journal page turns.
+    Crossfade(
+        targetState = state.activeTutorial,
+        animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Moderate),
+        label = "learnContent"
+    ) { active ->
+        if (active == null) {
+            TutorialList(
+                sections = state.sections,
+                onPick = viewModel::openTutorial
+            )
+        } else {
+            TutorialPlayer(
+                tutorial = active,
+                stepIndex = state.activeStepIndex,
+                errorMessage = state.activeError,
+                onNext = viewModel::nextStep,
+                onPrevious = viewModel::previousStep,
+                onClose = viewModel::closeTutorial,
+                onActionError = viewModel::reportActionError
+            )
+        }
     }
 }
 
@@ -76,12 +96,12 @@ private fun TutorialList(
     onPick: (Tutorial) -> Unit
 ) {
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
-                title = { Text("Learn") },
+                title = { Text("Learn", color = LeatherPalette.PandaIvory) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = Color.Transparent
                 )
             )
         }
@@ -91,28 +111,36 @@ private fun TutorialList(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            item("intro") {
-                IntroCard()
-            }
-            sections.forEach { section ->
+            item("intro") { IntroCard() }
+            sections.forEachIndexed { sectionIndex, section ->
                 item("hdr-${section.category.name}") {
-                    Column {
+                    Column(modifier = Modifier.padding(top = 8.dp)) {
                         Text(
                             text = section.category.displayName,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onBackground
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = LeatherPalette.PandaIvory
                         )
                         Text(
                             text = section.category.description,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = LeatherPalette.PandaCream.copy(alpha = 0.85f)
                         )
                     }
                 }
-                items(items = section.tutorials, key = { it.id }) { tutorial ->
-                    TutorialRow(tutorial = tutorial, onPick = onPick)
+                itemsIndexed(
+                    items = section.tutorials,
+                    key = { _, tutorial -> tutorial.id }
+                ) { rowIndex, tutorial ->
+                    val totalIndex = sectionIndex * 8 + rowIndex
+                    StaggeredEnter(index = totalIndex) {
+                        TutorialRow(
+                            tutorial = tutorial,
+                            grainSeed = totalIndex,
+                            onPick = onPick
+                        )
+                    }
                 }
             }
             item("footer") { Spacer(Modifier.height(24.dp)) }
@@ -121,55 +149,77 @@ private fun TutorialList(
 }
 
 @Composable
-private fun IntroCard() {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth()
+private fun StaggeredEnter(index: Int, content: @Composable () -> Unit) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically(
+            initialOffsetY = { it / 4 },
+            animationSpec = LeatherMotion.tweenLeather(
+                durationMillis = LeatherMotion.Normal + index * 60,
+                easing = LeatherMotion.EaseOutLeather
+            )
+        ) + fadeIn(LeatherMotion.tweenLeather(LeatherMotion.Normal + index * 60)),
+        exit = fadeOut() + slideOutVertically()
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        content()
+    }
+}
+
+@Composable
+private fun IntroCard() {
+    LeatherCard(
+        modifier = Modifier.fillMaxWidth(),
+        variant = LeatherCardVariant.Highlight,
+        elevationLevel = 2,
+        grainSeed = 0
+    ) {
+        Column {
             Text(
                 text = "Built for everyone",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.headlineMedium,
+                color = LeatherPalette.PandaIvory
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "These step-by-step guides walk you through the apps that are already on your phone — Gmail, Calendar, Contacts, the Camera. Big text, plain language, no rush. You don't need to set up any account to use this section.",
+                text = "Step-by-step guides for the apps already on your phone — Gmail, Calendar, Contacts, the Camera. Big text, plain language, no rush.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = LeatherPalette.PandaCream
             )
         }
     }
 }
 
 @Composable
-private fun TutorialRow(tutorial: Tutorial, onPick: (Tutorial) -> Unit) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+private fun TutorialRow(
+    tutorial: Tutorial,
+    grainSeed: Int,
+    onPick: (Tutorial) -> Unit
+) {
+    LeatherCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onPick(tutorial) }
+            .clip(RoundedCornerShape(20.dp))
+            .clickable { onPick(tutorial) },
+        elevationLevel = 1,
+        grainSeed = grainSeed,
+        contentPadding = 16.dp
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             CategoryDot(category = tutorial.category)
             Spacer(Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = tutorial.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = MaterialTheme.typography.titleLarge.copy(fontSize = 18.sp),
+                    color = LeatherPalette.PandaIvory
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = "${tutorial.steps.size} steps · about ${tutorial.estimatedMinutes} min",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = LeatherPalette.PandaCream.copy(alpha = 0.8f)
                 )
             }
         }
@@ -178,24 +228,24 @@ private fun TutorialRow(tutorial: Tutorial, onPick: (Tutorial) -> Unit) {
 
 @Composable
 private fun CategoryDot(category: TutorialCategory) {
-    val color = when (category) {
-        TutorialCategory.Email -> MaterialTheme.colorScheme.primary
-        TutorialCategory.Calendar -> MaterialTheme.colorScheme.secondary
-        TutorialCategory.Contacts -> MaterialTheme.colorScheme.tertiary
-        TutorialCategory.Phone -> MaterialTheme.colorScheme.primary
-        TutorialCategory.Social -> MaterialTheme.colorScheme.secondary
+    val palette = when (category) {
+        TutorialCategory.Email -> LeatherPalette.ThreadFresh
+        TutorialCategory.Calendar -> LeatherPalette.WarningAmber
+        TutorialCategory.Contacts -> LeatherPalette.ThreadLime
+        TutorialCategory.Phone -> LeatherPalette.Saddle
+        TutorialCategory.Social -> LeatherPalette.Tan
     }
     Box(
         modifier = Modifier
             .size(40.dp)
             .clip(CircleShape)
-            .background(color),
+            .background(palette),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = category.displayName.first().toString(),
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onPrimary
+            color = LeatherPalette.PandaCharcoal
         )
     }
 }
@@ -216,29 +266,34 @@ private fun TutorialPlayer(
     val isFirstStep = stepIndex == 0
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(
                             text = tutorial.title,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            color = LeatherPalette.PandaIvory
                         )
                         Text(
                             text = "Step ${stepIndex + 1} of ${tutorial.steps.size}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = LeatherPalette.PandaCream.copy(alpha = 0.75f)
                         )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close tutorial")
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Close tutorial",
+                            tint = LeatherPalette.PandaIvory
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = Color.Transparent
                 )
             )
         }
@@ -249,39 +304,52 @@ private fun TutorialPlayer(
                 .padding(padding)
                 .padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
-            ProgressBar(
-                stepIndex = stepIndex,
+            ProgressDots(
+                currentIndex = stepIndex,
                 totalSteps = tutorial.steps.size
             )
             Spacer(Modifier.height(20.dp))
-            // Large body — Assistive Mode uses 22sp body text for readability
-            // by users with reduced vision, and high colour contrast.
-            Text(
-                text = step.body,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 22.sp, lineHeight = 32.sp),
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            step.tip?.let {
-                Spacer(Modifier.height(20.dp))
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Tip",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 18.sp),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+
+            // Crossfade the body itself when the user advances — the leather
+            // page is unchanged, only the writing on it.
+            Crossfade(
+                targetState = stepIndex,
+                animationSpec = LeatherMotion.tweenLeather(LeatherMotion.Moderate),
+                label = "tutorialStepBody"
+            ) { idx ->
+                val current = tutorial.steps[idx]
+                Column {
+                    Text(
+                        text = current.body,
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = 22.sp,
+                            lineHeight = 32.sp
+                        ),
+                        color = LeatherPalette.PandaIvory
+                    )
+                    current.tip?.let {
+                        Spacer(Modifier.height(20.dp))
+                        LeatherCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            variant = LeatherCardVariant.Warning,
+                            elevationLevel = 1,
+                            contentPadding = 16.dp,
+                            grainSeed = idx + 100
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Tip",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = LeatherPalette.WarningAmber
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    text = it,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 18.sp),
+                                    color = LeatherPalette.PandaCream
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -294,8 +362,9 @@ private fun TutorialPlayer(
                 )
             }
             Spacer(Modifier.weight(1f))
+
             step.actionIntent?.let { intent ->
-                PrimaryButton(
+                LeatherButton(
                     text = step.actionLabel ?: "Open",
                     onClick = {
                         when (val r = DeepLinks.launch(context, intent)) {
@@ -310,46 +379,22 @@ private fun TutorialPlayer(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedButton(
-                    onClick = onPrevious,
-                    enabled = !isFirstStep,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = null
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlineLeatherButton(
+                        text = "Back",
+                        onClick = onPrevious,
+                        enabled = !isFirstStep
                     )
-                    Spacer(Modifier.width(8.dp))
-                    Text("Back")
                 }
-                PrimaryButton(
-                    text = if (isLastStep) "Done" else "Next",
-                    onClick = if (isLastStep) onClose else onNext,
-                    modifier = Modifier.weight(1f)
-                )
+                Box(modifier = Modifier.weight(1f)) {
+                    LeatherButton(
+                        text = if (isLastStep) "Done" else "Next",
+                        onClick = if (isLastStep) onClose else onNext
+                    )
+                }
             }
             Spacer(Modifier.height(8.dp))
         }
     }
 }
 
-@Composable
-private fun ProgressBar(stepIndex: Int, totalSteps: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        repeat(totalSteps) { i ->
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-                    .background(
-                        if (i <= stepIndex) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceVariant
-                    )
-            )
-        }
-    }
-}
