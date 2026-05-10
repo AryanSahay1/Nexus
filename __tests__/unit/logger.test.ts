@@ -12,7 +12,10 @@ import { logEvent, logError, logInfo, logWarn, __internal } from '../../src/util
 
 const captureConsole = (): { logs: string[]; restore: () => void } => {
   const logs: string[] = [];
-  const log = jest.spyOn(console, 'log').mockImplementation((m: unknown) => {
+  // Info logs route through console.info (the GATE-4 cleanup ensures the
+  // literal `console.log` no longer appears anywhere in src/). Spy on
+  // every level the logger may use.
+  const info = jest.spyOn(console, 'info').mockImplementation((m: unknown) => {
     logs.push(String(m));
   });
   const warn = jest.spyOn(console, 'warn').mockImplementation((m: unknown) => {
@@ -24,7 +27,7 @@ const captureConsole = (): { logs: string[]; restore: () => void } => {
   return {
     logs,
     restore: () => {
-      log.mockRestore();
+      info.mockRestore();
       warn.mockRestore();
       error.mockRestore();
     },
