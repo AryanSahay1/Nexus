@@ -187,6 +187,43 @@ rg "TODO|FIXME" src         # must return zero hits — LAW 6
 
 ---
 
+## Troubleshooting
+
+### Red screen: "Unable to load script. Make sure you're either running Metro …"
+
+You sideloaded the **debug** APK. Debug APKs in Expo SDK 50 do not bundle JavaScript; they expect a Metro dev server (`npx expo start`) at runtime. Two fixes:
+
+- **Easiest** — uninstall, then download `nexus-<version>-android-release.apk` from the same GitHub Release page. The release APK bundles the JS and runs standalone. As of v0.1.3 the debug APK is no longer attached to public Releases for exactly this reason.
+- **For developers** — keep the debug APK installed, run `npx expo start` from the repo root, and let the device connect to Metro on the same network.
+
+### Boot-failed screen with a step name and error code
+
+The boot sequence has a hardened `BootSequencer` (`src/utils/bootSequencer.ts`) that surfaces the failing step name and `NexusErrorCode` directly on screen. Common cases:
+
+| Step | Likely cause |
+| --- | --- |
+| `db_init` | Insufficient storage on device, or running a build older than v0.1.2 (the `expo-sqlite/next` API switch was made there). |
+| `vault_hydrate` | iOS Keychain / Android Keystore briefly unavailable. Tap Retry — usually self-heals. |
+| `oauth_backend` / `contacts_backend` | These are non-critical. They can fail without blocking the rest of the app. |
+
+Tap **Retry** on the boot-failed screen to re-run the entire boot sequence without reinstalling.
+
+### TypeScript errors on `npx tsc --noEmit`
+
+`tsconfig.json` is strict (`exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`). Both flags are non-negotiable per LAW 3 — if your edit produces an error, the type is wrong, not the config. Use `unknown` + a type guard rather than `any`.
+
+### `babel.config.js` and `expo-router/babel`
+
+In SDK 50 the `expo-router/babel` plugin is **deprecated** and folded into `babel-preset-expo`. Re-adding it produces:
+
+```
+SyntaxError: [BABEL]: expo-router/babel is deprecated in favor of babel-preset-expo in SDK 50.
+```
+
+at release-bundle build time. The current `babel.config.js` correctly omits it. If you upgrade past SDK 50 in the future, re-evaluate.
+
+---
+
 ## What's verified vs deferred
 
 This codebase has been governance-audited (PR #2) and TPM-driven (PR #3) and built up to the full UI shell here. **257+ unit tests across 17 suites pass deterministically.**

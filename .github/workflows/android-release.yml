@@ -54,23 +54,57 @@ jobs:
           EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GOOGLE_CLIENT_ID }}
         run: ./scripts/build-android-apk.sh release
 
-      - name: Upload APKs as workflow artifacts
+      # Debug APK is uploaded as a workflow artifact ONLY (developer-only).
+      # It does NOT bundle assets/index.android.bundle — it expects a Metro
+      # dev server at runtime — and sideloading it without Metro produces
+      # the "Unable to load script" red screen. Attaching it to a public
+      # GitHub Release would be a footgun for end-user sideload paths.
+      # See NX-001 for the full incident write-up.
+      - name: Upload debug APK as workflow artifact (developer-only)
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-android-apks
+          name: nexus-android-debug-developer-only
           path: |
             release/nexus-*-android-debug.apk
-            release/nexus-*-android-release.apk
-            release/*.sha256
+            release/nexus-*-android-debug.apk.sha256
           if-no-files-found: error
 
-      - name: Attach APKs to GitHub release (tag-only)
+      - name: Upload release APK as workflow artifact (sideload-ready)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-android-release
+          path: |
+            release/nexus-*-android-release.apk
+            release/nexus-*-android-release.apk.sha256
+          if-no-files-found: error
+
+      # Public GitHub Release attaches ONLY the release APK + sha256 sidecar.
+      # End users follow the Releases page link and get a sideload-ready
+      # binary by default. Devs who want the debug APK can pull it from
+      # the workflow artifacts page.
+      - name: Attach release APK to GitHub release (tag-only)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release/nexus-*-android-debug.apk
-            release/nexus-*-android-debug.apk.sha256
             release/nexus-*-android-release.apk
             release/nexus-*-android-release.apk.sha256
           generate_release_notes: true
+          body: |
+            ## Install
+
+            Download `nexus-${{ github.ref_name }}-android-release.apk` and open
+            on your Android device. Approve "unknown developer" when prompted,
+            tap Install. Open Nexus — the Vault screen will appear so you can
+            paste your OpenAI / Groq key (and optionally connect Google).
+
+            **Don't sideload the debug APK** — it does not bundle JavaScript
+            and requires a Metro dev server at runtime. If you need the debug
+            variant for `npx expo start` workflows, download it from the
+            Actions workflow artifacts.
+
+            See [`docs/BUILD_AND_DOWNLOAD.md`](https://github.com/AryanSahay1/Nexus/blob/${{ github.ref_name }}/docs/BUILD_AND_DOWNLOAD.md)
+            for the three install paths and [`docs/GOOGLE_SETUP.md`](https://github.com/AryanSahay1/Nexus/blob/${{ github.ref_name }}/docs/GOOGLE_SETUP.md)
+            for the free 10-minute Google Cloud setup.
+
+            sha256 sidecar attached.
