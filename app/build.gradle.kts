@@ -42,13 +42,35 @@ android {
                 // Fallback so unsigned-CI builds and `assembleRelease` succeed on a
                 // fresh checkout. Sideload-quality signing only — replace with a
                 // proper Play Store key before publishing.
+                //
+                // We materialise a debug keystore on demand (CI runners don't ship
+                // one until `assembleDebug` runs, but configuration is global so
+                // we have to guarantee the file exists at config time, not just
+                // at task-execution time). Without this, `:app:packageRelease`
+                // fails with "SigningConfig 'release' is missing required
+                // property 'storeFile'".
                 val debugStore = file("${System.getProperty("user.home")}/.android/debug.keystore")
-                if (debugStore.exists()) {
-                    storeFile = debugStore
-                    storePassword = "android"
-                    keyAlias = "androiddebugkey"
-                    keyPassword = "android"
+                if (!debugStore.exists()) {
+                    debugStore.parentFile.mkdirs()
+                    val keytool = "${System.getProperty("java.home")}/bin/keytool"
+                    project.exec {
+                        commandLine(
+                            keytool, "-genkey", "-noprompt",
+                            "-keystore", debugStore.absolutePath,
+                            "-storepass", "android",
+                            "-alias", "androiddebugkey",
+                            "-keypass", "android",
+                            "-keyalg", "RSA",
+                            "-keysize", "2048",
+                            "-validity", "10000",
+                            "-dname", "CN=Android Debug,O=Android,C=US"
+                        )
+                    }
                 }
+                storeFile = debugStore
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
             }
             // B-30 fix: v1 (JAR) signing is required for API 24–25 installs.
             // v2 + v3 cover modern Android.
